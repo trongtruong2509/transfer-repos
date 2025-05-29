@@ -1,0 +1,23 @@
+2025-05-29 16:47:07,150 - RepoTransfer - INFO - Initializing GitHub Repository Transfer Tool
+2025-05-29 16:47:07,152 - RepoTransfer - INFO - DRY RUN MODE: No actual transfers will be performed
+2025-05-29 16:47:07,152 - RepoTransfer - INFO - Processing transfer request: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:47:11,231 - RepoTransfer - INFO - Authenticated as: trongtruong2509
+2025-05-29 16:47:12,433 - RepoTransfer - INFO - DRY RUN: Would transfer repository nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:47:30,228 - RepoTransfer - INFO - Initializing GitHub Repository Transfer Tool
+2025-05-29 16:47:30,229 - RepoTransfer - INFO - DRY RUN MODE: No actual transfers will be performed
+2025-05-29 16:47:30,229 - RepoTransfer - DEBUG - Debug logging enabled
+2025-05-29 16:47:30,229 - RepoTransfer - INFO - Processing transfer request: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:47:30,229 - RepoTransfer - DEBUG - Validating GitHub token
+2025-05-29 16:47:30,231 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.github.com:443
+2025-05-29 16:47:34,179 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /user HTTP/1.1" 200 None
+2025-05-29 16:47:34,180 - RepoTransfer - INFO - Authenticated as: trongtruong2509
+2025-05-29 16:47:34,180 - RepoTransfer - DEBUG - Validating access to organization: nova-iris
+2025-05-29 16:47:34,555 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /orgs/nova-iris HTTP/1.1" 200 None
+2025-05-29 16:47:34,556 - RepoTransfer - DEBUG - Organization access validated: nova-iris
+2025-05-29 16:47:34,557 - RepoTransfer - DEBUG - Validating access to organization: baohtruong
+2025-05-29 16:47:34,881 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /orgs/baohtruong HTTP/1.1" 200 None
+2025-05-29 16:47:34,881 - RepoTransfer - DEBUG - Organization access validated: baohtruong
+2025-05-29 16:47:34,882 - RepoTransfer - DEBUG - Validating access to repository: nova-iris/example-repo-2
+2025-05-29 16:47:35,272 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /repos/nova-iris/example-repo-2 HTTP/1.1" 200 None
+2025-05-29 16:47:35,273 - RepoTransfer - DEBUG - Repository access validated: nova-iris/example-repo-2
+2025-05-29 16:47:35,274 - RepoTransfer - INFO - DRY RUN: Would transfer repository nova-iris/example-repo-2 to baohtruong
