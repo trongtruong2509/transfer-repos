@@ -1,5 +1,11 @@
 #!/bin/bash
 # Run all tests and generate an HTML report
+#
+# Usage:
+#   ./run_tests.sh             # Run standard tests (skipping real tests)
+#   ./run_tests.sh -f          # Run full tests including real integration tests
+#   ./run_tests.sh -r          # Run only real execution tests that perform actual transfers
+#   ./run_tests.sh -f -r       # Run full tests and real execution tests
 
 # Source environment variables from .env file if it exists
 if [ -f ".env" ]; then
@@ -23,8 +29,19 @@ while [[ $# -gt 0 ]]; do
             RUN_REAL_EXECUTION=1
             shift
             ;;
+        -h|--help)
+            echo "Usage:"
+            echo "  ./run_tests.sh             # Run standard tests (skipping real tests)"
+            echo "  ./run_tests.sh -f          # Run full tests including real integration tests"
+            echo "  ./run_tests.sh -r          # Run only real execution tests that perform actual transfers"
+            echo "  ./run_tests.sh -f -r       # Run full tests and real execution tests"
+            echo "  ./run_tests.sh -h          # Show this help message"
+            exit 0
+            ;;
         *)
             # Unknown option
+            echo "Unknown option: $1"
+            echo "Use -h or --help for usage information"
             shift
             ;;
     esac
@@ -232,6 +249,20 @@ fi
 
 # Set up the environment variable for real execution tests if requested
 if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
+    print_warning "=========================================================================="
+    print_warning "CAUTION: You are about to run REAL EXECUTION tests"
+    print_warning "These tests will perform ACTUAL repository transfers between organizations"
+    print_warning "Make sure you have run setup_test_repos.sh to create the test repositories"
+    print_warning "=========================================================================="
+    
+    # Confirm with the user before proceeding
+    read -p "Do you want to continue? [y/N] " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Aborted by user."
+        exit 0
+    fi
+    
     print_status "Running REAL EXECUTION tests that perform actual repository transfers..."
     export GITHUB_TEST_REAL_EXECUTION=1
     
@@ -248,19 +279,31 @@ if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
         print_error "Please update TEST_ORG_1, TEST_ORG_2, and TEST_USER in test/conftest.py."
         exit 1
     fi
+    
+    # Only run real execution tests
+    print_status "Running only real execution tests..."
+    $PYTHON_CMD -m pytest test/real_execution \
+        --html=test_results/report.html \
+        --cov=$MODULE_NAME \
+        --cov-report=html:test_results/coverage \
+        -v || {
+        print_error "Some tests failed."
+        TEST_STATUS=1  # Set error status but continue to show report
+    }
 else
     export GITHUB_TEST_REAL_EXECUTION=0
+    
+    # Run standard tests
+    $PYTHON_CMD -m pytest test/ \
+        --html=test_results/report.html \
+        --cov=$MODULE_NAME \
+        --cov-report=html:test_results/coverage \
+        -v \
+        -k "not test_logging" || {
+        print_error "Some tests failed."
+        TEST_STATUS=1  # Set error status but continue to show report
+    }
 fi
-
-$PYTHON_CMD -m pytest test/ \
-    --html=test_results/report.html \
-    --cov=$MODULE_NAME \
-    --cov-report=html:test_results/coverage \
-    -v \
-    -k "not test_logging" || {
-    print_error "Some tests failed."
-    TEST_STATUS=1  # Set error status but continue to show report
-}
 
 # Check if the coverage report was generated
 if [ -f "test_results/coverage/index.html" ]; then

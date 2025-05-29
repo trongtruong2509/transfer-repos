@@ -38,7 +38,17 @@ The tool includes a comprehensive test suite with 45+ test cases covering all as
 You can run all tests and generate HTML reports using the provided script:
 
 ```bash
+# Run standard tests (skipping real tests)
 ./run_tests.sh
+
+# Run full tests including real integration tests
+./run_tests.sh -f
+
+# Run only real execution tests
+./run_tests.sh -r
+
+# Run full tests and real execution tests
+./run_tests.sh -f -r
 ```
 
 This will:
@@ -54,10 +64,10 @@ The script has been enhanced to work on various Linux distributions, including D
 The tool includes tests that perform actual repository transfers to verify functionality:
 
 ```bash
-# Run with the full test suite
-./run_tests.sh --real-execution
+# Run only real execution tests
+./run_tests.sh -r
 
-# Run only the real execution tests
+# Alternative dedicated script for real execution tests
 ./run_real_tests.sh
 ```
 

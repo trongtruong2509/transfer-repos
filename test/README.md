@@ -52,6 +52,27 @@ pytest test/unit/test_authentication.py::TestAuthentication::test_valid_token -v
 
 # Run tests with a specific marker
 pytest -m "not integration" -v
+
+# Run only real execution tests that perform actual transfers
+pytest test/real_execution -v
+```
+
+### Running Tests with Shortcuts
+
+The `run_tests.sh` script provides shortcuts for running different test suites:
+
+```bash
+# Run standard tests (skipping real tests)
+./run_tests.sh
+
+# Run full tests including real integration tests
+./run_tests.sh -f
+
+# Run only real execution tests
+./run_tests.sh -r
+
+# Run only real execution tests with dedicated script
+./run_real_tests.sh
 ```
 
 ## Setting Up Test Repositories
