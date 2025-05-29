@@ -97,9 +97,11 @@ class GitHubRepoTransfer:
             handlers=[console_handler, file_handler]
         )
         
-        self.logger.info(f"============================================================")
-        self.logger.info(f"GITHUB REPOSITORY TRANSFER TOOL - SESSION STARTED")
-        self.logger.info(f"============================================================")
+        # Define green color code for headers
+        GREEN = '\033[92m'  # Bright green
+        RESET = '\033[0m'   # Reset to default
+        
+        self.logger.info(f"{GREEN}GITHUB REPOSITORY TRANSFER TOOL - SESSION STARTED{RESET}")
         self.logger.info("Initializing GitHub Repository Transfer Tool")
         if dry_run:
             self.logger.info("DRY RUN MODE: No actual transfers will be performed")
@@ -254,7 +256,7 @@ class GitHubRepoTransfer:
             return True
             
         # Perform the actual transfer
-        self._log_section_header("INITIATING REPOSITORY TRANSFER")
+        self.logger.info("Initiating repository transfer...")
         try:
             # GitHub API endpoint for repository transfer
             url = f"https://api.github.com/repos/{source_org}/{repo_name}/transfer"
@@ -276,16 +278,19 @@ class GitHubRepoTransfer:
             return False
             
     def _log_section_header(self, title: str) -> None:
-        """Log a major section header with consistent formatting."""
-        self.logger.info(f"============================================================")
-        # Use error level for headers containing "FAILED" or "ERROR", warning for "WARNING"
+        """Log a major section header with consistent formatting and green color."""
+        # Define green color code
+        GREEN = '\033[92m'  # Bright green
+        RESET = '\033[0m'   # Reset to default
+        
+        # Use error level for headers containing "FAILED" or "ERROR", warning for "WARNING", otherwise green
         if "FAILED" in title or "ERROR" in title:
             self.logger.error(f"{title}")
         elif "WARNING" in title:
             self.logger.warning(f"{title}")
         else:
-            self.logger.info(f"{title}")
-        self.logger.info(f"============================================================")
+            # For normal headers, use info level with green color
+            self.logger.info(f"{GREEN}{title}{RESET}")
     
     def _log_step(self, step_number: int, total_steps: int, description: str) -> None:
         """Log a numbered step in a multi-step process."""
@@ -293,10 +298,17 @@ class GitHubRepoTransfer:
         
     def _log_step_result(self, success: bool, message: str, details: str = None) -> None:
         """Log the result of a step with visual indicator."""
-        prefix = "✓" if success else "✗"
+        # Define color codes
+        GREEN = '\033[92m'  # Bright green
+        RED = '\033[91m'    # Red
+        RESET = '\033[0m'   # Reset to default
+        
+        # Apply appropriate color to the prefix symbol
         if success:
+            prefix = f"{GREEN}✓{RESET}"
             self.logger.info(f"{prefix} {message}")
         else:
+            prefix = f"{RED}✗{RESET}"
             # For failed steps, use error level to trigger red coloring
             self.logger.error(f"{prefix} {message}")
         
@@ -306,7 +318,12 @@ class GitHubRepoTransfer:
             
     def _log_warning(self, message: str) -> None:
         """Log a warning message with a warning symbol."""
-        self.logger.warning(f"⚠ {message}")
+        # Define yellow color for warning symbol
+        YELLOW = '\033[93m'  # Yellow
+        RESET = '\033[0m'    # Reset to default
+        
+        # Add yellow color to the warning symbol
+        self.logger.warning(f"{YELLOW}⚠{RESET} {message}")
             
     def process_single_transfer(self, source_org: str, repo_name: str, dest_org: str) -> bool:
         """Process a single repository transfer with full validation."""
@@ -476,13 +493,17 @@ class GitHubRepoTransfer:
         return successful, total
 def log_program_completion(logger, success: bool = True):
     """Add a footer to the log when the program completes."""
+    # Define color codes
+    GREEN = '\033[92m'  # Bright green
+    RED = '\033[91m'    # Red
+    RESET = '\033[0m'   # Reset to default
+    
     status = "SUCCESSFULLY" if success else "WITH ERRORS"
-    logger.info(f"============================================================")
+    
     if success:
-        logger.info(f"GITHUB REPOSITORY TRANSFER TOOL - SESSION COMPLETED {status}")
+        logger.info(f"{GREEN}GITHUB REPOSITORY TRANSFER TOOL - SESSION COMPLETED {status}{RESET}")
     else:
         logger.error(f"GITHUB REPOSITORY TRANSFER TOOL - SESSION COMPLETED {status}")
-    logger.info(f"============================================================")
 
 
 def main():
