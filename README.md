@@ -49,6 +49,23 @@ This will:
 
 The script has been enhanced to work on various Linux distributions, including Debian/Ubuntu systems.
 
+#### Running Real Execution Tests
+
+The tool includes tests that perform actual repository transfers to verify functionality:
+
+```bash
+# Run with the full test suite
+./run_tests.sh --real-execution
+
+# Run only the real execution tests
+./run_real_tests.sh
+```
+
+**Note:** Real execution tests require:
+1. A GitHub token with admin access to both test organizations
+2. Test repositories created by running `setup_test_repos.sh`
+3. Updated organization names in `test/conftest.py`
+
 ### Test Structure
 
 - **Unit Tests**: Test individual components in isolation
@@ -71,11 +88,13 @@ Before running integration tests with real GitHub API:
    ```
    
    This script will:
-   - Check for and offer to install GitHub CLI if missing
-   - Validate organization existence before creating repositories
-   - Set up git identity for commits if not configured
-   - Create test repositories with various configurations
-   - Generate a sample CSV file for testing
+   - Create test repositories with various configurations:
+     - Empty repositories
+     - Public and private repositories
+     - Repositories with multiple branches
+     - Repositories with issues
+     - Repositories with GitHub Actions workflows
+   - Generate a sample CSV file for batch transfer testing
    - Provide configuration settings for `conftest.py`
 
 2. Update `test/conftest.py` with your organization names and GitHub username:

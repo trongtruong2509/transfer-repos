@@ -1,6 +1,35 @@
 #!/bin/bash
 # Run all tests and generate an HTML report
 
+# Source environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    echo "Loading environment variables from .env file..."
+    source .env
+fi
+
+# Default is to skip real integration tests
+RUN_FULL_TESTS=0
+# Default is to skip real execution tests 
+RUN_REAL_EXECUTION=0
+
+# Process command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--full)
+            RUN_FULL_TESTS=1
+            shift
+            ;;
+        -r|--real-execution)
+            RUN_REAL_EXECUTION=1
+            shift
+            ;;
+        *)
+            # Unknown option
+            shift
+            ;;
+    esac
+done
+
 set -e  # Exit on error
 
 # Colors for output
@@ -191,6 +220,38 @@ fi
 
 # Run tests with coverage and generate HTML report
 print_status "Running tests..."
+
+# Set up the environment variable for integration tests if full tests are requested
+if [ "$RUN_FULL_TESTS" -eq 1 ]; then
+    print_status "Running FULL tests including real integration tests..."
+    export GITHUB_TEST_INTEGRATION=1
+else
+    print_status "Running standard tests (skipping real integration tests)..."
+    export GITHUB_TEST_INTEGRATION=0
+fi
+
+# Set up the environment variable for real execution tests if requested
+if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
+    print_status "Running REAL EXECUTION tests that perform actual repository transfers..."
+    export GITHUB_TEST_REAL_EXECUTION=1
+    
+    # Check if GITHUB_TOKEN environment variable is set
+    if [ -z "$GITHUB_TOKEN" ]; then
+        print_error "GITHUB_TOKEN environment variable is required for real execution tests."
+        print_error "Please set it in your .env file or export it before running the tests."
+        exit 1
+    fi
+    
+    # Check if the test organizations are configured in conftest.py
+    if grep -q "\"Replace with your actual" test/conftest.py; then
+        print_error "The test organizations in test/conftest.py need to be configured."
+        print_error "Please update TEST_ORG_1, TEST_ORG_2, and TEST_USER in test/conftest.py."
+        exit 1
+    fi
+else
+    export GITHUB_TEST_REAL_EXECUTION=0
+fi
+
 $PYTHON_CMD -m pytest test/ \
     --html=test_results/report.html \
     --cov=$MODULE_NAME \

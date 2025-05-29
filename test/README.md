@@ -17,6 +17,9 @@ The test suite is organized as follows:
 - `integration/`: Integration tests that test the tool end-to-end
   - `test_integration.py`: End-to-end tests with real or mocked GitHub API
 
+- `real_execution/`: Real-world execution tests that perform actual repository transfers
+  - `test_real_execution.py`: Tests that execute actual repository transfers (not dry-run)
+
 - `fixtures/`: Shared test fixtures (via conftest.py)
 
 ## Running Tests
@@ -68,6 +71,9 @@ For real integration tests, you need to set the following environment variables:
 ```bash
 # Set to 1 to run real integration tests against GitHub API
 export GITHUB_TEST_INTEGRATION=1
+
+# Set to 1 to run real execution tests that perform actual transfers
+export GITHUB_TEST_REAL_EXECUTION=1
 
 # Different tokens for testing various permission levels
 export GITHUB_TOKEN_ADMIN=your_admin_token
