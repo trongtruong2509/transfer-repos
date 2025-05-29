@@ -8,11 +8,12 @@ from unittest.mock import MagicMock, patch
 import logging
 import sys
 
-# Constants for testing
-TEST_ORG_1 = "nova-iris"  # Replace with your actual first org name
-TEST_ORG_2 = "baohtruong"  # Replace with your actual second org name
-TEST_USER = "trongtruong2509"  # Replace with your GitHub username
-TEST_REPO = "example-repo-2"  # Replace with a test repository name
+# Load constants from environment variables (.env file)
+# These values are loaded in run_tests.sh or can be set manually
+TEST_ORG_1 = os.environ.get("TEST_ORG_1", "nova-iris")
+TEST_ORG_2 = os.environ.get("TEST_ORG_2", "baohtruong")
+TEST_USER = os.environ.get("TEST_USER", "trongtruong2509")
+TEST_REPO = os.environ.get("TEST_REPO", "example-repo-2")
 
 # Skip all logging tests by default
 def pytest_collection_modifyitems(items):

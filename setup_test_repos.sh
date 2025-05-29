@@ -2,7 +2,8 @@
 # Setup test repositories for GitHub Repository Transfer Tool tests
 
 # This script uses curl to interact with GitHub API
-# Usage: ./setup_test_repos.sh <org1> <org2>
+# Usage: ./setup_test_repos.sh [org1] [org2]
+#   If org1 and org2 are not provided, values from .env file will be used
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -23,15 +24,40 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check arguments
-if [ $# -ne 2 ]; then
-    print_error "Usage: $0 <org1> <org2>"
-    print_error "Example: $0 myorg1 myorg2"
-    exit 1
+# Source environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    print_status "Loading environment variables from .env file..."
+    source .env
+else
+    print_warning "No .env file found. You can create one from .env.template"
+    print_warning "cp .env.template .env && nano .env"
 fi
 
-ORG1=$1
-ORG2=$2
+# Check arguments or use environment variables
+if [ $# -eq 2 ]; then
+    # Command-line arguments provided, use them
+    ORG1=$1
+    ORG2=$2
+    print_status "Using organizations from command-line arguments: $ORG1 and $ORG2"
+elif [ $# -eq 0 ]; then
+    # No arguments provided, try to use values from .env
+    ORG1=${TEST_ORG_1:-""}
+    ORG2=${TEST_ORG_2:-""}
+    
+    if [ -z "$ORG1" ] || [ -z "$ORG2" ]; then
+        print_error "Organization names not provided and not found in .env file"
+        print_error "Usage: $0 [org1] [org2]"
+        print_error "Or set TEST_ORG_1 and TEST_ORG_2 in .env file"
+        exit 1
+    fi
+    
+    print_status "Using organizations from .env file: $ORG1 and $ORG2"
+else
+    print_error "Invalid number of arguments."
+    print_error "Usage: $0 [org1] [org2]"
+    print_error "Or set TEST_ORG_1 and TEST_ORG_2 in .env file"
+    exit 1
+fi
 
 # Check if curl is installed
 if ! command -v curl &> /dev/null; then
@@ -45,26 +71,17 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 
-# Get GitHub token from environment or ask for it
+# Get GitHub token from environment
 GITHUB_TOKEN=${GITHUB_TOKEN:-""}
 if [ -z "$GITHUB_TOKEN" ]; then
-    # Try to source from .env file if it exists
-    if [ -f ".env" ]; then
-        print_status "Found .env file, sourcing GitHub token..."
-        source .env
-    fi
+    print_warning "GitHub Personal Access Token not found in environment or .env file."
+    print_warning "Please enter your GitHub Personal Access Token with 'repo' and 'delete_repo' scopes:"
+    read -r -s GITHUB_TOKEN
+    echo "" # New line after hidden input
     
-    # If still empty, ask for it
     if [ -z "$GITHUB_TOKEN" ]; then
-        print_warning "GitHub Personal Access Token not found in environment or .env file."
-        print_warning "Please enter your GitHub Personal Access Token with 'repo' and 'delete_repo' scopes:"
-        read -r -s GITHUB_TOKEN
-        echo "" # New line after hidden input
-        
-        if [ -z "$GITHUB_TOKEN" ]; then
-            print_error "No token provided. Exiting."
-            exit 1
-        fi
+        print_error "No token provided. Exiting."
+        exit 1
     fi
 fi
 
@@ -304,12 +321,49 @@ create_repo "$ORG2" "test-private" "private" || print_warning "Failed to create 
 
 print_status "Test repositories setup completed."
 print_status "==============================================================="
-print_status "IMPORTANT: Update test/conftest.py with your organization names and GitHub username:"
+print_status "IMPORTANT: The following values are being used:"
 echo ""
 echo "TEST_ORG_1 = \"$ORG1\"  # First organization"
 echo "TEST_ORG_2 = \"$ORG2\"  # Second organization"
 echo "TEST_USER = \"$GITHUB_USERNAME\"  # Your GitHub username"
 echo ""
+
+# Ask if the user wants to update the .env file
+read -p "Do you want to save these values to .env file? (y/N) " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [ -f ".env" ]; then
+        # Backup existing .env file
+        cp .env ".env.bak.$(date +%Y%m%d%H%M%S)"
+        print_status "Existing .env file backed up."
+        
+        # Update the values in .env file
+        sed -i "s/^TEST_ORG_1=.*/TEST_ORG_1=$ORG1/" .env
+        sed -i "s/^TEST_ORG_2=.*/TEST_ORG_2=$ORG2/" .env
+        sed -i "s/^TEST_USER=.*/TEST_USER=$GITHUB_USERNAME/" .env
+    else
+        # Create new .env file from template if it exists
+        if [ -f ".env.template" ]; then
+            cp .env.template .env
+            sed -i "s/^TEST_ORG_1=.*/TEST_ORG_1=$ORG1/" .env
+            sed -i "s/^TEST_ORG_2=.*/TEST_ORG_2=$ORG2/" .env
+            sed -i "s/^TEST_USER=.*/TEST_USER=$GITHUB_USERNAME/" .env
+            sed -i "s/^GITHUB_TOKEN=.*/GITHUB_TOKEN=$GITHUB_TOKEN/" .env
+        else
+            # Create minimal .env file
+            cat > ".env" << EOF
+# GitHub Repository Transfer Tool - Environment Configuration
+GITHUB_TOKEN=$GITHUB_TOKEN
+TEST_ORG_1=$ORG1
+TEST_ORG_2=$ORG2
+TEST_USER=$GITHUB_USERNAME
+TEST_REPO=example-repo-2
+EOF
+        fi
+    fi
+    print_status "Values saved to .env file."
+fi
+
 print_status "==============================================================="
 print_status "You can now run the tests with: ./run_tests.sh"
 
@@ -335,3 +389,4 @@ $ORG2,test-private,$ORG1
 EOF
 
 print_status "Sample CSV file created: $SAMPLE_CSV"
+print_status "==============================================================="

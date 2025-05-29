@@ -11,6 +11,23 @@
 if [ -f ".env" ]; then
     echo "Loading environment variables from .env file..."
     source .env
+    
+    # Export variables for pytest
+    export TEST_ORG_1
+    export TEST_ORG_2
+    export TEST_USER
+    export TEST_REPO
+else
+    echo "No .env file found. You might need to create one from the template:"
+    echo "cp .env.template .env && nano .env"
+    
+    # Check if we're running in CI environment where env vars might be set differently
+    if [ -z "$CI" ]; then
+        if [ ! -f "test/conftest.py" ]; then
+            print_error "No .env file and no conftest.py found. Cannot proceed."
+            exit 1
+        fi
+    fi
 fi
 
 # Default is to skip real integration tests
@@ -273,10 +290,10 @@ if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
         exit 1
     fi
     
-    # Check if the test organizations are configured in conftest.py
-    if grep -q "\"Replace with your actual" test/conftest.py; then
-        print_error "The test organizations in test/conftest.py need to be configured."
-        print_error "Please update TEST_ORG_1, TEST_ORG_2, and TEST_USER in test/conftest.py."
+    # Check if the test organizations are properly configured
+    if [ -z "$TEST_ORG_1" ] || [ -z "$TEST_ORG_2" ] || [ -z "$TEST_USER" ]; then
+        print_error "TEST_ORG_1, TEST_ORG_2, and TEST_USER must be set for real execution tests."
+        print_error "Please set them in your .env file or export them before running the tests."
         exit 1
     fi
     

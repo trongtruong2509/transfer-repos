@@ -20,14 +20,27 @@ A Python-based tool to automate validation and transfer of repositories between 
 - Required Python packages:
   - requests
 
-## Installation
+## Environment Configuration
 
-1. Clone this repository
-2. Install required packages:
+The tool uses environment variables for configuration. You can:
 
-```bash
-pip install -r requirements.txt
-```
+1. Create a `.env` file from the template:
+   ```bash
+   cp .env.template .env
+   nano .env  # Edit with your values
+   ```
+
+2. Run the setup script to automatically configure settings:
+   ```bash
+   ./setup_test_repos.sh
+   ```
+
+3. Set environment variables manually:
+   ```bash
+   export GITHUB_TOKEN=your_github_token
+   ```
+
+For more details, see [Environment Configuration](ENV_CONFIG.md).
 
 ## Testing
 

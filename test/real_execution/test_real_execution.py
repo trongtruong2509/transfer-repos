@@ -53,12 +53,13 @@ def setup_test_repos():
     except Exception as e:
         pytest.fail(f"Failed to make setup script executable: {e}")
 
-    # Run the script
-    print(f"Running setup script: {script_path} {TEST_ORG_1} {TEST_ORG_2}")
+    # Run the script without arguments to use values from .env
+    print(f"Running setup script: {script_path}")
     process = subprocess.run(
-        [str(script_path), TEST_ORG_1, TEST_ORG_2],
+        [str(script_path)],
         capture_output=True,
-        text=True
+        text=True,
+        env=os.environ.copy()  # Pass current environment variables including TEST_ORG_1, TEST_ORG_2
     )
 
     if process.returncode != 0:
