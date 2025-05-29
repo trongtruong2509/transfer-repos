@@ -70,7 +70,7 @@ org1,repo2,org3
 ### Additional Options
 
 - `--dry-run`: Simulate the transfer process without actually transferring repos
-- `--debug`: Enable verbose debug logging
+- `-v, --verbose`: Enable verbose debug logging
 
 ## Logging
 

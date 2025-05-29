@@ -21,3 +21,31 @@
 2025-05-29 16:47:35,272 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /repos/nova-iris/example-repo-2 HTTP/1.1" 200 None
 2025-05-29 16:47:35,273 - RepoTransfer - DEBUG - Repository access validated: nova-iris/example-repo-2
 2025-05-29 16:47:35,274 - RepoTransfer - INFO - DRY RUN: Would transfer repository nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:50:40,287 - RepoTransfer - INFO - Initializing GitHub Repository Transfer Tool
+2025-05-29 16:50:40,287 - RepoTransfer - INFO - DRY RUN MODE: No actual transfers will be performed
+2025-05-29 16:50:40,287 - RepoTransfer - DEBUG - Debug logging enabled
+2025-05-29 16:50:40,288 - RepoTransfer - INFO - Processing transfer request: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:50:40,288 - RepoTransfer - DEBUG - Validating GitHub token
+2025-05-29 16:50:40,289 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.github.com:443
+2025-05-29 16:50:44,320 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /user HTTP/1.1" 200 None
+2025-05-29 16:50:44,321 - RepoTransfer - INFO - Authenticated as: trongtruong2509
+2025-05-29 16:50:44,321 - RepoTransfer - DEBUG - Validating access to organization: nova-iris
+2025-05-29 16:50:44,685 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /orgs/nova-iris HTTP/1.1" 200 None
+2025-05-29 16:50:44,686 - RepoTransfer - DEBUG - Organization access validated: nova-iris
+2025-05-29 16:50:44,686 - RepoTransfer - DEBUG - Validating access to organization: baohtruong
+2025-05-29 16:50:45,040 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /orgs/baohtruong HTTP/1.1" 200 None
+2025-05-29 16:50:45,041 - RepoTransfer - DEBUG - Organization access validated: baohtruong
+2025-05-29 16:50:45,042 - RepoTransfer - DEBUG - Validating access to repository: nova-iris/example-repo-2
+2025-05-29 16:50:46,525 - urllib3.connectionpool - DEBUG - https://api.github.com:443 "GET /repos/nova-iris/example-repo-2 HTTP/1.1" 200 None
+2025-05-29 16:50:46,526 - RepoTransfer - DEBUG - Repository access validated: nova-iris/example-repo-2
+2025-05-29 16:50:46,527 - RepoTransfer - INFO - DRY RUN: Would transfer repository nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:50:56,814 - RepoTransfer - INFO - Initializing GitHub Repository Transfer Tool
+2025-05-29 16:50:56,814 - RepoTransfer - INFO - Processing transfer request: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:51:00,750 - RepoTransfer - INFO - Authenticated as: trongtruong2509
+2025-05-29 16:51:01,999 - RepoTransfer - INFO - Transferring repository: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:51:02,695 - RepoTransfer - INFO - Repository transfer initiated successfully: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:51:22,756 - RepoTransfer - INFO - Initializing GitHub Repository Transfer Tool
+2025-05-29 16:51:22,757 - RepoTransfer - INFO - Processing transfer request: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:51:26,697 - RepoTransfer - INFO - Authenticated as: trongtruong2509
+2025-05-29 16:51:28,106 - RepoTransfer - INFO - Transferring repository: nova-iris/example-repo-2 to baohtruong
+2025-05-29 16:51:28,838 - RepoTransfer - ERROR - Repository transfer failed: 422 - {"message":"Validation Failed","errors":[{"resource":"Repository","code":"unprocessable","field":"data","message":"Repositories cannot be transferred to the original owner"}],"documentation_url":"https://docs.github.com/rest/repos/repos#transfer-a-repository","status":"422"}

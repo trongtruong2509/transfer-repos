@@ -257,8 +257,8 @@ Examples:
   # Transfer multiple repositories from a CSV file
   python3 repo_transfer.py --csv repos_to_transfer.csv
   
-  # Use debug mode for verbose logging
-  python3 repo_transfer.py --source-org myorg --repo-name myrepo --dest-org neworg --debug
+  # Use verbose mode for detailed logging
+  python3 repo_transfer.py --source-org myorg --repo-name myrepo --dest-org neworg -v
   
 Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
 ''',
@@ -277,7 +277,7 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
     
     # Common arguments
     parser.add_argument('--dry-run', action='store_true', help='Dry run mode (no actual transfers, just validation)')
-    parser.add_argument('--debug', action='store_true', help='Enable verbose debug logging')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose debug logging')
     
     args = parser.parse_args()
     
@@ -290,7 +290,7 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
     # Create the transfer instance
     transfer = GitHubRepoTransfer(
         token=github_token,
-        debug=args.debug,
+        debug=args.verbose,
         dry_run=args.dry_run
     )
     
