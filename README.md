@@ -74,7 +74,7 @@ org1,repo2,org3
 
 ## Logging
 
-The tool logs all operations to both the console and a file named `repo_transfer.log` in the current directory.
+The tool logs all operations to both the console and individual log files in the `logs` directory. Each run creates a new log file with a timestamp (e.g., `logs/repo_transfer_20250529_165122.log`), making it easy to track different transfer sessions.
 
 ## License
 

@@ -49,3 +49,5 @@
 2025-05-29 16:51:26,697 - RepoTransfer - INFO - Authenticated as: trongtruong2509
 2025-05-29 16:51:28,106 - RepoTransfer - INFO - Transferring repository: nova-iris/example-repo-2 to baohtruong
 2025-05-29 16:51:28,838 - RepoTransfer - ERROR - Repository transfer failed: 422 - {"message":"Validation Failed","errors":[{"resource":"Repository","code":"unprocessable","field":"data","message":"Repositories cannot be transferred to the original owner"}],"documentation_url":"https://docs.github.com/rest/repos/repos#transfer-a-repository","status":"422"}
+2025-05-29 16:54:14 - INFO - Initializing GitHub Repository Transfer Tool
+2025-05-29 16:54:14 - INFO - DRY RUN MODE: No actual transfers will be performed
