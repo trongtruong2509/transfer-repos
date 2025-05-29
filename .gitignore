@@ -22,6 +22,21 @@ lib64/
 parts/
 sdist/
 var/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+
+# Test artifacts
+test_results/
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+parts/
+sdist/
+var/
 wheels/
 *.egg-info/
 .installed.cfg
@@ -34,6 +49,23 @@ ENV/
 .venv/
 
 # IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+*~
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.old
+tmp/
+
+# Any backup files created by our scripts
+*.bak.*
+sample_repos.csv.bak*
 .idea/
 .vscode/
 *.swp

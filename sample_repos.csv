@@ -1,4 +1,7 @@
 source_org,repo_name,dest_org
-source-org-1,repo-example-1,dest-org-1
-source-org-1,repo-example-2,dest-org-1
-source-org-2,important-repo,dest-org-2
+nova-iris,test-empty,baohtruong
+nova-iris,test-public,baohtruong
+nova-iris,test-private,baohtruong
+baohtruong,test-empty,nova-iris
+baohtruong,test-public,nova-iris
+baohtruong,test-private,nova-iris

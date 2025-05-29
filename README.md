@@ -29,6 +29,74 @@ A Python-based tool to automate validation and transfer of repositories between 
 pip install -r requirements.txt
 ```
 
+## Testing
+
+The tool includes a comprehensive test suite with 45+ test cases covering all aspects of functionality:
+
+### Running Tests
+
+You can run all tests and generate HTML reports using the provided script:
+
+```bash
+./run_tests.sh
+```
+
+This will:
+1. Create a virtual environment if needed
+2. Install required packages for testing
+3. Run all tests with code coverage
+4. Generate HTML reports in the `test_results` directory
+
+The script has been enhanced to work on various Linux distributions, including Debian/Ubuntu systems.
+
+### Test Structure
+
+- **Unit Tests**: Test individual components in isolation
+  - Authentication
+  - Organization validation
+  - Repository validation
+  - Transfer functionality
+  - CSV processing
+  - Logging
+
+- **Integration Tests**: Test the tool end-to-end
+
+### Setting Up Test Environment
+
+Before running integration tests with real GitHub API:
+
+1. Set up test repositories using the enhanced setup script:
+   ```bash
+   ./setup_test_repos.sh your-org-1 your-org-2
+   ```
+   
+   This script will:
+   - Check for and offer to install GitHub CLI if missing
+   - Validate organization existence before creating repositories
+   - Set up git identity for commits if not configured
+   - Create test repositories with various configurations
+   - Generate a sample CSV file for testing
+   - Provide configuration settings for `conftest.py`
+
+2. Update `test/conftest.py` with your organization names and GitHub username:
+   ```python
+   TEST_ORG_1 = "your-org-1"  # First organization
+   TEST_ORG_2 = "your-org-2"  # Second organization
+   TEST_USER = "your-username"  # Your GitHub username
+   ```
+
+3. Set environment variables for different token permission levels:
+   ```bash
+   export GITHUB_TEST_INTEGRATION=1
+   export GITHUB_TOKEN_ADMIN=your_admin_token
+   export GITHUB_TOKEN_MEMBER=your_member_token
+   export GITHUB_TOKEN_READONLY=your_readonly_token
+   export GITHUB_TOKEN_ORG1=your_org1_only_token
+   export GITHUB_TOKEN_ORG2=your_org2_only_token
+   ```
+
+For more details, see [test/README.md](test/README.md).
+
 ## Usage
 
 ### Environment Setup

@@ -491,6 +491,7 @@ class GitHubRepoTransfer:
             return successful, total
             
         return successful, total
+
 def log_program_completion(logger, success: bool = True):
     """Add a footer to the log when the program completes."""
     # Define color codes
