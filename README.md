@@ -5,11 +5,12 @@ A Python-based tool to automate validation and transfer of repositories between 
 ## Features
 
 - Validate GitHub access tokens and permissions before transfer
+- Thorough organization validation checks (existence, type, and user membership)
 - Transfer repositories between organizations
 - Two operation modes:
   - Single repository transfer via command-line arguments
   - Batch transfer via CSV file
-- Comprehensive logging
+- Comprehensive logging with session-specific log files
 - Dry-run mode to simulate transfers without actually performing them
 - Debug mode for verbose logging
 

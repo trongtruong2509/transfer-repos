@@ -45,17 +45,56 @@ class GitHubRepoTransfer:
         log_filename = f"repo_transfer_{timestamp}{dry_run_suffix}.log"
         log_path = logs_dir / log_filename
         
-        # Setup logging
+        # Setup logging with colored console output
         self.logger = logging.getLogger("RepoTransfer")
         log_level = logging.DEBUG if debug else logging.INFO
+        
+        # Define color codes for console output
+        class ColoredFormatter(logging.Formatter):
+            """Custom formatter to add colors to log levels in console output."""
+            COLORS = {
+                'ERROR': '\033[91m',  # Red
+                'WARNING': '\033[93m',  # Yellow
+                'INFO': '',  # Default color
+                'DEBUG': '\033[94m',  # Blue
+                'RESET': '\033[0m'  # Reset to default
+            }
+
+            def format(self, record):
+                log_message = super().format(record)
+                # Add colors to specific words in the message
+                if record.levelname == 'ERROR':
+                    # Color the whole message for errors
+                    log_message = f"{self.COLORS['ERROR']}{log_message}{self.COLORS['RESET']}"
+                elif record.levelname == 'WARNING':
+                    # Color the whole message for warnings
+                    log_message = f"{self.COLORS['WARNING']}{log_message}{self.COLORS['RESET']}"
+                else:
+                    # For other levels, just color specific keywords
+                    log_message = log_message.replace("FAILED", f"{self.COLORS['ERROR']}FAILED{self.COLORS['RESET']}")
+                    log_message = log_message.replace("ERROR", f"{self.COLORS['ERROR']}ERROR{self.COLORS['RESET']}")
+                    log_message = log_message.replace("WARNING", f"{self.COLORS['WARNING']}WARNING{self.COLORS['RESET']}")
+                
+                return log_message
+        
+        # Create console handler with colored output
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(ColoredFormatter(
+            '%(asctime)s - %(levelname)s - %(message)s',
+            '%Y-%m-%d %H:%M:%S'
+        ))
+        
+        # Create file handler with regular formatting (no colors in log files)
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(message)s',
+            '%Y-%m-%d %H:%M:%S'
+        ))
+        
+        # Configure logging
         logging.basicConfig(
             level=log_level,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
-            handlers=[
-                logging.StreamHandler(),
-                logging.FileHandler(log_path)
-            ]
+            handlers=[console_handler, file_handler]
         )
         
         self.logger.info(f"============================================================")
@@ -103,12 +142,38 @@ class GitHubRepoTransfer:
         """
         self.logger.debug(f"Validating access to organization: {org_name}")
         try:
+            # First check if the organization exists
             response = self.session.get(f"https://api.github.com/orgs/{org_name}")
+            
             if response.status_code == 200:
-                self.logger.debug(f"Organization access validated: {org_name}")
-                return True
+                # Organization exists, now verify it's actually an organization (not a user)
+                org_data = response.json()
+                if org_data.get('type') == 'Organization':
+                    self.logger.debug(f"Organization access validated: {org_name}")
+                    
+                    # Check if user has permissions to manage repositories in this organization
+                    membership_url = f"https://api.github.com/orgs/{org_name}/memberships/{self.user_login}"
+                    membership_response = self.session.get(membership_url)
+                    
+                    if membership_response.status_code == 200:
+                        membership_data = membership_response.json()
+                        role = membership_data.get('role')
+                        state = membership_data.get('state')
+                        
+                        if state == 'active' and role in ['admin', 'member']:
+                            self.logger.debug(f"User has '{role}' role in organization {org_name}")
+                            return True
+                        else:
+                            self.logger.error(f"User membership in {org_name} is not active or has insufficient permissions")
+                            return False
+                    else:
+                        self.logger.error(f"User is not a member of organization {org_name}")
+                        return False
+                else:
+                    self.logger.error(f"{org_name} exists but is not an organization (likely a user account)")
+                    return False
             else:
-                self.logger.error(f"Organization access failed for {org_name}: {response.status_code} - {response.text}")
+                self.logger.error(f"Organization not found: {org_name} (Status: {response.status_code} - {response.text})")
                 return False
         except Exception as e:
             self.logger.error(f"Organization validation error for {org_name}: {str(e)}")
@@ -213,7 +278,13 @@ class GitHubRepoTransfer:
     def _log_section_header(self, title: str) -> None:
         """Log a major section header with consistent formatting."""
         self.logger.info(f"============================================================")
-        self.logger.info(f"{title}")
+        # Use error level for headers containing "FAILED" or "ERROR", warning for "WARNING"
+        if "FAILED" in title or "ERROR" in title:
+            self.logger.error(f"{title}")
+        elif "WARNING" in title:
+            self.logger.warning(f"{title}")
+        else:
+            self.logger.info(f"{title}")
         self.logger.info(f"============================================================")
     
     def _log_step(self, step_number: int, total_steps: int, description: str) -> None:
@@ -223,7 +294,12 @@ class GitHubRepoTransfer:
     def _log_step_result(self, success: bool, message: str, details: str = None) -> None:
         """Log the result of a step with visual indicator."""
         prefix = "✓" if success else "✗"
-        self.logger.info(f"{prefix} {message}")
+        if success:
+            self.logger.info(f"{prefix} {message}")
+        else:
+            # For failed steps, use error level to trigger red coloring
+            self.logger.error(f"{prefix} {message}")
+        
         if details:
             level = logging.INFO if success else logging.ERROR
             self.logger.log(level, f"  - {details}")
@@ -252,7 +328,7 @@ class GitHubRepoTransfer:
         source_org_valid = self.validate_org_access(source_org)
         if not source_org_valid:
             self._log_step_result(False, f"Failed to access source organization '{source_org}'", 
-                                "Organization not found or insufficient permissions")
+                                "Organization not found, user not a member, or insufficient permissions")
             if not self.dry_run:
                 self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
                 return False
@@ -266,7 +342,7 @@ class GitHubRepoTransfer:
         dest_org_valid = self.validate_org_access(dest_org)
         if not dest_org_valid:
             self._log_step_result(False, f"Failed to access destination organization '{dest_org}'", 
-                                "Organization not found or insufficient permissions")
+                                "Organization not found, user not a member, or insufficient permissions")
             if not self.dry_run:
                 self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
                 return False
@@ -402,7 +478,10 @@ def log_program_completion(logger, success: bool = True):
     """Add a footer to the log when the program completes."""
     status = "SUCCESSFULLY" if success else "WITH ERRORS"
     logger.info(f"============================================================")
-    logger.info(f"GITHUB REPOSITORY TRANSFER TOOL - SESSION COMPLETED {status}")
+    if success:
+        logger.info(f"GITHUB REPOSITORY TRANSFER TOOL - SESSION COMPLETED {status}")
+    else:
+        logger.error(f"GITHUB REPOSITORY TRANSFER TOOL - SESSION COMPLETED {status}")
     logger.info(f"============================================================")
 
 
