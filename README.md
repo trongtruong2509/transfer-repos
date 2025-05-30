@@ -1,6 +1,20 @@
 # GitHub Repository Transfer Tool
 
-A Python-based tool to automate validation and transfer of repositories between GitHub organizations.
+A Python-based tool to automate validation and transfer of repositor### GitHub Actions Integration
+
+This tool is integrated with GitHub Actions to automate repository transfers via Pull Requests.
+
+### How It Works
+
+1. Create a Pull Request with changes to `transfer_repos.csv`
+2. GitHub Actions will automatically:
+   - Run unit tests and integration tests
+   - Validate the CSV format and check repository existence
+   - If validation passes, perform a dry-run using the repositories listed in `transfer_repos.csv`
+   - Upload the dry-run logs as an artifact for review
+   - Add a detailed comment to the PR with validation and dry-run results GitHub organizations.
+
+[![Repository Transfer Workflow](https://github.com/OWNER/REPO/actions/workflows/repo-transfer-pr.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/repo-transfer-pr.yml)
 
 ## Features
 
@@ -98,6 +112,47 @@ org1,repo2,org3
    ```bash
    python repo_transfer.py --source-org my-source-org --repo-name my-repo --dest-org my-dest-org -v
    ```
+
+## GitHub Actions Integration
+
+This tool is integrated with GitHub Actions to automate repository transfers via Pull Requests.
+
+### How It Works
+
+1. Create a Pull Request with changes to `transfer_repos.csv`
+2. GitHub Actions will automatically:
+   - Run unit tests and integration tests
+   - If tests pass, perform a dry-run using the repositories listed in `transfer_repos.csv`
+   - Upload the dry-run logs as an artifact for review
+
+### Setting Up GitHub Actions
+
+1. Configure the required secrets in your GitHub repository settings:
+   - `GITHUB_TOKEN_ADMIN`: GitHub token with admin access
+   - `GITHUB_TOKEN_MEMBER`: GitHub token with member access (for testing)
+   - `GITHUB_TOKEN_READONLY`: GitHub token with read-only access (for testing)
+   - `GITHUB_TOKEN_ORG1`: Token for source organization
+   - `GITHUB_TOKEN_ORG2`: Token for destination organization
+
+2. Configure the repository variables in your GitHub repository settings:
+   - `TEST_ORG_1`: Name of the first test organization
+   - `TEST_ORG_2`: Name of the second test organization
+   - `TEST_USER`: GitHub username for testing
+   - `TEST_REPO_SUFFIX`: Suffix for test repositories (optional)
+   - `TEST_REPO`: Name of the test repository (optional)
+
+3. Create a Pull Request with changes to `transfer_repos.csv` to trigger the workflow
+
+### Example CSV Format
+
+```csv
+source_org,repo_name,dest_org
+nova-iris,test-repo-1,baohtruong
+nova-iris,test-repo-2,baohtruong
+baohtruong,test-repo-3,nova-iris
+```
+
+## Testing
 
 ## Environment Configuration
 

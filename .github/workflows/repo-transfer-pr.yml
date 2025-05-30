@@ -1,0 +1,217 @@
+name: Repository Transfer PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'transfer_repos.csv'
+  pull_request_target:
+    branches: [main]
+    paths:
+      - 'transfer_repos.csv'
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    name: Run Tests and Validate Transfers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Configure environment variables
+        env:
+          GITHUB_TOKEN_ADMIN: ${{ secrets.ADMIN_TOKEN }}
+        #   GITHUB_TOKEN_MEMBER: ${{ secrets.GITHUB_TOKEN_MEMBER }}
+        #   GITHUB_TOKEN_READONLY: ${{ secrets.GITHUB_TOKEN_READONLY }}
+        #   GITHUB_TOKEN_ORG1: ${{ secrets.GITHUB_TOKEN_ORG1 }}
+        #   GITHUB_TOKEN_ORG2: ${{ secrets.GITHUB_TOKEN_ORG2 }}
+        #   TEST_ORG_1: ${{ vars.TEST_ORG_1 }}
+        #   TEST_ORG_2: ${{ vars.TEST_ORG_2 }}
+        #   TEST_USER: ${{ vars.TEST_USER }}
+        #   TEST_REPO_SUFFIX: ${{ vars.TEST_REPO_SUFFIX || format('{0}', github.run_id) }}
+        #   TEST_REPO: ${{ vars.TEST_REPO || format('test-public-org1-{0}', github.run_id) }}
+        run: |
+          # Export variables for tests
+          echo "export GITHUB_TOKEN=${GITHUB_TOKEN_ADMIN}" > .env
+        #   echo "TEST_ORG_1=${TEST_ORG_1}" >> $GITHUB_ENV
+        #   echo "TEST_ORG_2=${TEST_ORG_2}" >> $GITHUB_ENV
+        #   echo "TEST_USER=${TEST_USER}" >> $GITHUB_ENV
+        #   echo "TEST_REPO_SUFFIX=${TEST_REPO_SUFFIX}" >> $GITHUB_ENV
+        #   echo "TEST_REPO=${TEST_REPO}" >> $GITHUB_ENV
+          
+          # Generate a temporary .env file for testing
+        #   echo "export GITHUB_TOKEN_ADMIN=${GITHUB_TOKEN_ADMIN}" >> .env
+        #   echo "export GITHUB_TOKEN_MEMBER=${GITHUB_TOKEN_MEMBER}" >> .env
+        #   echo "export GITHUB_TOKEN_READONLY=${GITHUB_TOKEN_READONLY}" >> .env
+        #   echo "export GITHUB_TOKEN_ORG1=${GITHUB_TOKEN_ORG1}" >> .env
+        #   echo "export GITHUB_TOKEN_ORG2=${GITHUB_TOKEN_ORG2}" >> .env
+        #   echo "TEST_ORG_1=${TEST_ORG_1}" >> .env
+        #   echo "TEST_ORG_2=${TEST_ORG_2}" >> .env
+        #   echo "TEST_USER=${TEST_USER}" >> .env
+        #   echo "TEST_REPO_SUFFIX=${TEST_REPO_SUFFIX}" >> .env
+        #   echo "TEST_REPO=${TEST_REPO}" >> .env
+
+      - name: Check for changes in transfer_repos.csv
+        id: csv-changes
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "pull_request_target" ]; then
+            git diff --name-only origin/${{ github.base_ref }} origin/${{ github.head_ref }} | grep -q "transfer_repos.csv" && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run unit tests
+        run: |
+          ./run_tests.sh 
+
+    #   - name: Run integration tests
+    #     run: |
+    #       ./run_tests.sh -i
+
+      - name: Analyze CSV changes
+        if: steps.csv-changes.outputs.changed == 'true'
+        run: |
+          echo "Changes detected in transfer_repos.csv"
+          echo "Analyzing changes:"
+          
+          # Show a diff of the changes for PR comment
+          git diff --unified=0 origin/${{ github.base_ref }} origin/${{ github.head_ref }} -- transfer_repos.csv > csv_diff.txt
+          
+          # Count number of repositories to be transferred
+          REPO_COUNT=$(grep -v "^source_org" transfer_repos.csv | grep -v "^$" | wc -l)
+          echo "Number of repositories to be transferred: $REPO_COUNT"
+          echo "REPO_COUNT=$REPO_COUNT" >> $GITHUB_ENV
+          
+          # Create summary of changes
+          echo "## Repository Transfer Changes" > transfer_summary.md
+          echo "" >> transfer_summary.md
+          echo "This PR includes the following repository transfers:" >> transfer_summary.md
+          echo "" >> transfer_summary.md
+          echo "| Source Org | Repository | Destination Org |" >> transfer_summary.md
+          echo "| ---------- | ---------- | --------------- |" >> transfer_summary.md
+          grep -v "^source_org" transfer_repos.csv | grep -v "^$" | awk -F, '{ print "| " $1 " | " $2 " | " $3 " |" }' >> transfer_summary.md
+          
+          cat transfer_summary.md
+      
+      - name: Validate CSV and Repository Existence
+        if: steps.csv-changes.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          echo "Running CSV validation to check format and repository existence..."
+          python validate_csv.py --csv transfer_repos.csv
+          
+          # Save validation output for PR comment
+          echo "## CSV Validation Results" > csv_validation.md
+          echo "" >> csv_validation.md
+          echo "✓ All repositories in the CSV file exist and are ready for transfer." >> csv_validation.md
+
+  dry-run:
+    name: Dry Run Repository Transfer
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run dry-run with CSV input
+        env:
+          GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          python repo_transfer.py --csv transfer_repos.csv --dry-run --auto-approve --verbose
+          
+          # Extract key information from logs for PR comment
+          LATEST_LOG=$(ls -t logs/repo_transfer_*_dry_run.log | head -1)
+          echo "Latest log file: $LATEST_LOG"
+          
+          # Create a summary file
+          echo "## Repository Transfer Validation Results" > validation_results.md
+          echo "" >> validation_results.md
+          echo "The following validations were performed:" >> validation_results.md
+          echo "" >> validation_results.md
+          
+          # Extract organization validations
+          echo "### Organization Validations" >> validation_results.md
+          echo "" >> validation_results.md
+          grep -A 2 "Validating access to organization" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md
+          echo "" >> validation_results.md
+          
+          # Extract repository validations
+          echo "### Repository Validations" >> validation_results.md
+          echo "" >> validation_results.md
+          grep -A 2 "Validating repository access" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md
+          
+          cat validation_results.md
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: repo-transfer-logs
+          path: logs/repo_transfer_*_dry_run.log
+          retention-days: 7
+          
+      - name: Create PR Comment with Results
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            
+            let transferSummary = '';
+            if (fs.existsSync('transfer_summary.md')) {
+              transferSummary = fs.readFileSync('transfer_summary.md', 'utf8');
+            }
+            
+            let validationResults = '';
+            if (fs.existsSync('validation_results.md')) {
+              validationResults = fs.readFileSync('validation_results.md', 'utf8');
+            }
+            
+            let csvValidation = '';
+            if (fs.existsSync('csv_validation.md')) {
+              csvValidation = fs.readFileSync('csv_validation.md', 'utf8');
+            }
+            
+            const commentBody = '# Repository Transfer Validation\n\n' +
+              '## Summary\n' +
+              'This PR includes repository transfers that have been validated with a dry-run.\n\n' +
+              transferSummary + '\n\n' +
+              csvValidation + '\n\n' +
+              validationResults + '\n\n' +
+              '## Next Steps\n' +
+              '1. Review the validation results and dry-run logs\n' +
+              '2. If everything looks correct, approve and merge this PR\n' +
+              '3. After merging, the actual transfers will require manual approval\n\n' +
+              'For more details, check the workflow logs and attached artifacts.';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
