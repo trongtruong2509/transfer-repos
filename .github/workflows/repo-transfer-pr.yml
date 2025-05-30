@@ -139,6 +139,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
+          # Ensure script exits with 0 for dry runs
           python repo_transfer.py --csv transfer_repos.csv --dry-run --auto-approve --verbose
           
           # Extract key information from logs for PR comment

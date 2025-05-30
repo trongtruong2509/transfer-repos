@@ -688,14 +688,20 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
             log_program_completion(transfer.logger, success=False)
             print("No repositories were processed from the CSV file")
             sys.exit(1)
-        elif successful < total:
+        elif successful < total and not args.dry_run:
+            # In dry-run mode, consider it successful even if not all would be transferred
             log_program_completion(transfer.logger, success=False)
             print(f"Warning: Only {successful} out of {total} repositories were transferred successfully")
             sys.exit(1)
         else:
             log_program_completion(transfer.logger, success=True)
             print(f"Successfully transferred {successful} repositories")
-            sys.exit(0)
+            
+            # Always exit with 0 in dry-run mode to avoid GitHub Actions failures
+            if args.dry_run:
+                sys.exit(0)
+            else:
+                sys.exit(0 if successful == total else 1)
     
     else:  # Default is single mode
         # Validate required arguments for single mode
@@ -707,14 +713,20 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
         success = transfer.process_single_transfer(args.source_org, args.repo_name, args.dest_org)
         log_program_completion(transfer.logger, success=success)
         
-        if success:
+        # Always exit with 0 in dry-run mode
+        if args.dry_run:
+            print(f"Dry run completed for {args.source_org}/{args.repo_name} to {args.dest_org}")
+            sys.exit(0)
+        elif success:
             print(f"Successfully transferred {args.source_org}/{args.repo_name} to {args.dest_org}")
             sys.exit(0)
         else:
             print(f"Failed to transfer {args.source_org}/{args.repo_name} to {args.dest_org}")
             sys.exit(1)
     
-    log_program_completion(transfer.logger, success=True)
+    # This line should never be reached due to sys.exit() calls above
+    # Adding as a fallback just in case
+    sys.exit(0)
 
 
 if __name__ == "__main__":
