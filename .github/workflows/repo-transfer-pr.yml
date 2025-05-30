@@ -7,6 +7,12 @@ on:
       - 'transfer_repos.csv'
     types: [opened, synchronize, reopened]
 
+# Add permissions to the GITHUB_TOKEN
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   test:
     name: Run Tests and Validate Transfers
