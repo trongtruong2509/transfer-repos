@@ -165,136 +165,136 @@ create_repo() {
     fi
     
     # Clone repository
-    temp_dir=$(mktemp -d)
-    print_status "Cloning repository to temporary directory: $temp_dir"
+#     temp_dir=$(mktemp -d)
+#     print_status "Cloning repository to temporary directory: $temp_dir"
     
-    # Use the token for git clone to avoid authentication issues
-    git clone "https://$GITHUB_TOKEN@github.com/$org/$repo.git" "$temp_dir" || {
-        print_error "Failed to clone repository. Skipping content creation."
-        return 1
-    }
+#     # Use the token for git clone to avoid authentication issues
+#     git clone "https://$GITHUB_TOKEN@github.com/$org/$repo.git" "$temp_dir" || {
+#         print_error "Failed to clone repository. Skipping content creation."
+#         return 1
+#     }
     
-    cd "$temp_dir"
+#     cd "$temp_dir"
     
-    # Configure git (in case it's not configured)
-    if ! git config --get user.email &> /dev/null || ! git config --get user.name &> /dev/null; then
-        print_warning "Git user identity not configured. Setting up temporary identity..."
-        git config --local user.email "test@example.com"
-        git config --local user.name "Test User"
-    fi
+#     # Configure git (in case it's not configured)
+#     if ! git config --get user.email &> /dev/null || ! git config --get user.name &> /dev/null; then
+#         print_warning "Git user identity not configured. Setting up temporary identity..."
+#         git config --local user.email "test@example.com"
+#         git config --local user.name "Test User"
+#     fi
     
-    # Add some content
-    echo "# Test Repository: $repo" > README.md
-    echo "This is a test repository for the GitHub Repository Transfer Tool." >> README.md
-    echo "Created on: $(date)" >> README.md
+#     # Add some content
+#     echo "# Test Repository: $repo" > README.md
+#     echo "This is a test repository for the GitHub Repository Transfer Tool." >> README.md
+#     echo "Created on: $(date)" >> README.md
     
-    # Create different content based on repo type
-    case "$repo" in
-        "test-with-branches")
-            git add README.md
-            git commit -m "Initial commit" || {
-                print_error "Failed to create initial commit. Check git configuration."
-                cd - > /dev/null
-                rm -rf "$temp_dir"
-                return 1
-            }
-            git push || {
-                print_error "Failed to push initial commit."
-                cd - > /dev/null
-                rm -rf "$temp_dir"
-                return 1
-            }
+#     # Create different content based on repo type
+#     case "$repo" in
+#         "test-with-branches")
+#             git add README.md
+#             git commit -m "Initial commit" || {
+#                 print_error "Failed to create initial commit. Check git configuration."
+#                 cd - > /dev/null
+#                 rm -rf "$temp_dir"
+#                 return 1
+#             }
+#             git push || {
+#                 print_error "Failed to push initial commit."
+#                 cd - > /dev/null
+#                 rm -rf "$temp_dir"
+#                 return 1
+#             }
             
-            # Create branches
-            print_status "Creating branches for $org/$repo"
-            git checkout -b develop
-            echo "# Develop Branch" > DEVELOP.md
-            echo "This file exists only in the develop branch" >> DEVELOP.md
-            git add DEVELOP.md
-            git commit -m "Add develop branch"
-            git push --set-upstream origin develop || print_warning "Failed to push develop branch."
+#             # Create branches
+#             print_status "Creating branches for $org/$repo"
+#             git checkout -b develop
+#             echo "# Develop Branch" > DEVELOP.md
+#             echo "This file exists only in the develop branch" >> DEVELOP.md
+#             git add DEVELOP.md
+#             git commit -m "Add develop branch"
+#             git push --set-upstream origin develop || print_warning "Failed to push develop branch."
             
-            git checkout -b feature
-            echo "# Feature Branch" > FEATURE.md
-            echo "This file exists only in the feature branch" >> FEATURE.md
-            git add FEATURE.md
-            git commit -m "Add feature branch"
-            git push --set-upstream origin feature || print_warning "Failed to push feature branch."
-            ;;
+#             git checkout -b feature
+#             echo "# Feature Branch" > FEATURE.md
+#             echo "This file exists only in the feature branch" >> FEATURE.md
+#             git add FEATURE.md
+#             git commit -m "Add feature branch"
+#             git push --set-upstream origin feature || print_warning "Failed to push feature branch."
+#             ;;
             
-        "test-with-issues")
-            git add README.md
-            git commit -m "Initial commit"
-            git push || {
-                print_error "Failed to push initial commit."
-                cd - > /dev/null
-                rm -rf "$temp_dir"
-                return 1
-            }
+#         "test-with-issues")
+#             git add README.md
+#             git commit -m "Initial commit"
+#             git push || {
+#                 print_error "Failed to push initial commit."
+#                 cd - > /dev/null
+#                 rm -rf "$temp_dir"
+#                 return 1
+#             }
             
-            # Create issues using the GitHub API
-            print_status "Creating issues for $org/$repo"
+#             # Create issues using the GitHub API
+#             print_status "Creating issues for $org/$repo"
             
-            # Issue 1
-            issue1_payload='{"title":"Test Issue 1","body":"This is a test issue."}'
-            curl -s -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github.v3+json" \
-                -d "$issue1_payload" \
-                "https://api.github.com/repos/$org/$repo/issues" > /dev/null || print_warning "Failed to create Issue 1."
+#             # Issue 1
+#             issue1_payload='{"title":"Test Issue 1","body":"This is a test issue."}'
+#             curl -s -X POST \
+#                 -H "Authorization: token $GITHUB_TOKEN" \
+#                 -H "Accept: application/vnd.github.v3+json" \
+#                 -d "$issue1_payload" \
+#                 "https://api.github.com/repos/$org/$repo/issues" > /dev/null || print_warning "Failed to create Issue 1."
             
-            # Issue 2
-            issue2_payload='{"title":"Test Issue 2","body":"This is another test issue."}'
-            curl -s -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github.v3+json" \
-                -d "$issue2_payload" \
-                "https://api.github.com/repos/$org/$repo/issues" > /dev/null || print_warning "Failed to create Issue 2."
-            ;;
+#             # Issue 2
+#             issue2_payload='{"title":"Test Issue 2","body":"This is another test issue."}'
+#             curl -s -X POST \
+#                 -H "Authorization: token $GITHUB_TOKEN" \
+#                 -H "Accept: application/vnd.github.v3+json" \
+#                 -d "$issue2_payload" \
+#                 "https://api.github.com/repos/$org/$repo/issues" > /dev/null || print_warning "Failed to create Issue 2."
+#             ;;
             
-        "test-with-actions")
-            # Create a simple GitHub Actions workflow
-            print_status "Setting up GitHub Actions workflow for $org/$repo"
-            mkdir -p .github/workflows
-            cat > .github/workflows/ci.yml << 'EOF'
-name: CI
+#         "test-with-actions")
+#             # Create a simple GitHub Actions workflow
+#             print_status "Setting up GitHub Actions workflow for $org/$repo"
+#             mkdir -p .github/workflows
+#             cat > .github/workflows/ci.yml << 'EOF'
+# name: CI
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Echo test
-      run: echo "This is a test workflow"
-EOF
-            git add README.md .github/workflows/ci.yml
-            git commit -m "Initial commit with GitHub Actions"
-            git push || {
-                print_error "Failed to push GitHub Actions workflow."
-                cd - > /dev/null
-                rm -rf "$temp_dir"
-                return 1
-            }
-            ;;
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     steps:
+#     - uses: actions/checkout@v2
+#     - name: Echo test
+#       run: echo "This is a test workflow"
+# EOF
+#             git add README.md .github/workflows/ci.yml
+#             git commit -m "Initial commit with GitHub Actions"
+#             git push || {
+#                 print_error "Failed to push GitHub Actions workflow."
+#                 cd - > /dev/null
+#                 rm -rf "$temp_dir"
+#                 return 1
+#             }
+#             ;;
             
-        *)
-            # Default repository just with README
-            git add README.md
-            git commit -m "Initial commit"
-            git push || {
-                print_error "Failed to push initial commit."
-                cd - > /dev/null
-                rm -rf "$temp_dir"
-                return 1
-            }
-            ;;
-    esac
+#         *)
+#             # Default repository just with README
+#             git add README.md
+#             git commit -m "Initial commit"
+#             git push || {
+#                 print_error "Failed to push initial commit."
+#                 cd - > /dev/null
+#                 rm -rf "$temp_dir"
+#                 return 1
+#             }
+#             ;;
+#     esac
     
     # Clean up
     cd - > /dev/null
@@ -305,7 +305,7 @@ EOF
 }
 
 # Generate a timestamp suffix for uniqueness
-TIMESTAMP="20250530"
+TIMESTAMP="20250533"
 print_status "Using hardcoded timestamp suffix for unique repositories: $TIMESTAMP"
 
 # Create repositories in first organization

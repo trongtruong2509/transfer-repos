@@ -116,11 +116,15 @@ class TestRepositoryTransfer:
         
         transfer = GitHubRepoTransfer(token="admin-token", debug=False)
         transfer.user_login = TEST_USER  # Set user_login directly for the test
-        result = transfer.transfer_repository(TEST_ORG_1, TEST_REPO, TEST_ORG_2)
+        
+        # Override retry parameters to speed up the test
+        result = transfer.transfer_repository(TEST_ORG_1, TEST_REPO, TEST_ORG_2, max_retries=1, retry_delay=1)
         
         assert result is False
         assert mock_get.call_count == 5
-        mock_post.assert_called_once()
+        
+        # With the new retry logic, post will be called up to max_retries times
+        assert mock_post.call_count == 1
 
     @patch('requests.Session.post')
     def test_dry_run_transfer(self, mock_post):

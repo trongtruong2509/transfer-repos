@@ -213,7 +213,7 @@ class GitHubRepoTransfer:
             self.logger.error(f"Repository validation error for {org_name}/{repo_name}: {str(e)}")
             return False
     
-    def transfer_repository(self, source_org: str, repo_name: str, dest_org: str) -> bool:
+    def transfer_repository(self, source_org: str, repo_name: str, dest_org: str, max_retries: int = 3, retry_delay: int = 15) -> bool:
         """
         Transfer a repository from source organization to destination organization.
         
@@ -221,6 +221,8 @@ class GitHubRepoTransfer:
             source_org: Source GitHub organization
             repo_name: Name of the repository
             dest_org: Destination GitHub organization
+            max_retries: Maximum number of retry attempts for failed transfers
+            retry_delay: Delay in seconds between retry attempts
             
         Returns:
             bool: True if transfer was successful, False otherwise
@@ -265,27 +267,50 @@ class GitHubRepoTransfer:
             self._log_step_result(True, f"Would transfer repository {source_org}/{repo_name} to {dest_org}")
             return True
             
-        # Perform the actual transfer
+        # Perform the actual transfer with retries
         self.logger.info("Initiating repository transfer...")
-        try:
-            # GitHub API endpoint for repository transfer
-            url = f"https://api.github.com/repos/{source_org}/{repo_name}/transfer"
-            data = {"new_owner": dest_org}
-            
-            self._log_step(1, 1, f"Sending transfer request for {source_org}/{repo_name}...")
-            response = self.session.post(url, json=data)
-            self.logger.debug(f"Transfer API response: {response.status_code} {response.text}")
-            
-            if response.status_code == 202:
-                self._log_step_result(True, f"Repository transfer initiated successfully")
-                return True
-            else:
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                # GitHub API endpoint for repository transfer
+                url = f"https://api.github.com/repos/{source_org}/{repo_name}/transfer"
+                data = {"new_owner": dest_org}
+                
+                self._log_step(1, 1, f"Sending transfer request for {source_org}/{repo_name}...")
+                if attempt > 1:
+                    self.logger.info(f"Retry attempt {attempt}/{max_retries}")
+                    
+                response = self.session.post(url, json=data)
+                self.logger.debug(f"Transfer API response: {response.status_code} {response.text}")
+                
+                if response.status_code == 202:
+                    self._log_step_result(True, f"Repository transfer initiated successfully")
+                    return True
+                    
+                # Check for "operation still in progress" error
+                if response.status_code == 422 and "previous repository operation is still in progress" in response.text:
+                    if attempt < max_retries:
+                        self._log_warning(f"Previous repository operation still in progress. Waiting {retry_delay} seconds before retry...")
+                        time.sleep(retry_delay)
+                        continue
+                
+                # Other errors
                 self._log_step_result(False, f"Repository transfer failed", f"GitHub API returned {response.status_code}: {response.text}")
                 self.logger.error(f"Transfer failed: {response.status_code} {response.text}")
-                return False
-        except Exception as e:
-            self.logger.error(f"Exception during transfer_repository API call: {e}", exc_info=True)
-            return False
+                
+                # Break if we get a definitive failure not related to "operation in progress"
+                if not ("previous repository operation is still in progress" in response.text):
+                    break
+                    
+            except Exception as e:
+                self.logger.error(f"Exception during transfer_repository API call: {e}", exc_info=True)
+                if attempt < max_retries:
+                    self._log_warning(f"Transfer attempt failed. Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    continue
+                break
+                
+        return False
             
     def _log_section_header(self, title: str) -> None:
         """Log a major section header with consistent formatting and green color."""
@@ -577,6 +602,11 @@ class GitHubRepoTransfer:
                             self._log_step_result(False, f"Transfer skipped (user declined)", f"{source_org}/{repo_name} → {dest_org}")
                             continue
                     
+                    # Sleep for 30 seconds between transfer attempts to avoid "operation still in progress" errors
+                    if i > 1 and not self.dry_run:  # Only sleep after the first repository and not in dry-run mode
+                        self.logger.info(f"Waiting 15 seconds before next transfer to avoid GitHub API rate limiting...")
+                        time.sleep(15)
+                        
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1
                         self._log_step_result(True, f"Transfer completed", f"{source_org}/{repo_name} → {dest_org}")

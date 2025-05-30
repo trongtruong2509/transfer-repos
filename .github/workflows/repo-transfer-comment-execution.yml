@@ -13,9 +13,19 @@ permissions:
 jobs:
   execute-transfer:
     name: Execute Repository Transfer
-    if: ${{ github.event_name == 'issue_comment' }}
+    # No condition on github.event_name since this workflow is only triggered by issue_comment events
+    # Added explicit condition to check for 'apply transfer' in the comment
+    if: ${{ contains(github.event.comment.body, 'apply transfer') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Debug Event
+        run: |
+          echo "Event triggered by: ${{ github.event_name }}"
+          echo "Comment author: ${{ github.event.comment.user.login }}"
+          echo "Comment: ${{ github.event.comment.body }}"
+          echo "Issue/PR number: ${{ github.event.issue.number }}"
+          echo "Is PR: ${{ github.event.issue.pull_request != null }}"
+      
       - name: Check if comment triggers a transfer
         id: check-comment
         uses: actions/github-script@v6
@@ -46,6 +56,8 @@ jobs:
       - name: Check PR approval status
         id: check-approval
         if: steps.check-comment.outputs.should_execute == 'true'
+        env:
+          PR_NUMBER: ${{ steps.check-comment.outputs.pr_number }}
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -83,8 +95,6 @@ jobs:
             console.log('PR has at least one approval. Proceeding with transfer execution.');
             core.setOutput('can_execute', 'true');
             core.setOutput('branch_name', pr.head.ref);
-        env:
-          PR_NUMBER: ${{ steps.check-comment.outputs.pr_number }}
             
       - name: Checkout code
         if: steps.check-approval.outputs.can_execute == 'true'
@@ -180,6 +190,9 @@ jobs:
           
       - name: Report transfer results
         if: steps.check-approval.outputs.can_execute == 'true'
+        env:
+          PR_NUMBER: ${{ steps.check-comment.outputs.pr_number }}
+          TRANSFER_SUCCESS: ${{ steps.execute-transfers.outputs.transfer_success }}
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -219,6 +232,3 @@ jobs:
               console.error('Failed to create PR comment:', error);
               core.warning(`Failed to create PR comment: ${error.message}`);
             }
-        env:
-          PR_NUMBER: ${{ steps.check-comment.outputs.pr_number }}
-          TRANSFER_SUCCESS: ${{ steps.execute-transfers.outputs.transfer_success }}
