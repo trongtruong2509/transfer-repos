@@ -165,7 +165,7 @@ jobs:
           cat validation_results.md
 
       - name: Upload logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: repo-transfer-logs
           path: logs/repo_transfer_*_dry_run.log
