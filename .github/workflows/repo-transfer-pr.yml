@@ -225,23 +225,6 @@ jobs:
           # Ensure log file exists before proceeding
           if [ -f "$LATEST_LOG" ]; then
             # Create a summary file
-            echo "## Repository Transfer Validation Results" > validation_results.md
-            echo "" >> validation_results.md
-            echo "The following validations were performed:" >> validation_results.md
-            echo "" >> validation_results.md
-            
-            # Extract organization validations
-            echo "### Organization Validations" >> validation_results.md
-            echo "" >> validation_results.md
-            grep -E "Checking access to (source|destination) organization|Source organization access confirmed|Destination organization access confirmed" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No organization validation data found" >> validation_results.md
-            echo "" >> validation_results.md
-            
-            # Extract repository validations
-            echo "### Repository Validations" >> validation_results.md
-            echo "" >> validation_results.md
-            grep -E "Checking access to repository|Repository access confirmed" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No repository validation data found" >> validation_results.md
-            echo "" >> validation_results.md
-            
             # Add comprehensive transfer summary
             echo "### Transfer Summary" >> validation_results.md
             echo "" >> validation_results.md
