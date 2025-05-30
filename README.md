@@ -150,14 +150,20 @@ The tool includes a comprehensive test suite with 45+ test cases covering all as
 
 3. Running tests:
    ```bash
-   # Run standard tests (skipping real tests)
+   # Run unit tests only (default)
    ./run_tests.sh
    
-   # Run full tests including real integration tests
+   # Run integration tests only
+   ./run_tests.sh -i
+   
+   # Run real execution tests only
+   ./run_tests.sh -r
+   
+   # Run unit tests and integration tests
    ./run_tests.sh -f
    
-   # Run only real execution tests
-   ./run_tests.sh -r
+   # Run all tests (unit, integration, real)
+   ./run_tests.sh --all
    ```
 
 For detailed information about running tests, test structure, and available test options, see [test/README.md](test/README.md).

@@ -55,27 +55,31 @@ The tool includes a comprehensive test suite with 45+ test cases covering all as
 
 ### Using the Test Script
 
-You can run all tests and generate a comprehensive HTML report using the provided script:
+You can run all tests and generate comprehensive HTML reports using the provided script:
 
 ```bash
-# Run standard tests (skipping real tests)
+# Run unit tests only (default)
 ./run_tests.sh
 
-# Run full tests including real integration tests
-./run_tests.sh -f
+# Run integration tests only
+./run_tests.sh -i
 
-# Run only real execution tests
+# Run real execution tests only
 ./run_tests.sh -r
 
-# Run full tests and real execution tests
-./run_tests.sh -f -r
+# Run unit tests and integration tests
+./run_tests.sh -f
+
+# Run all tests (unit, integration, real)
+./run_tests.sh --all
 ```
 
 This will:
 1. Create a virtual environment if needed
 2. Install required packages
-3. Run all tests with coverage
-4. Generate HTML reports
+3. Run the selected tests with coverage
+4. Generate HTML reports for each test category
+5. Create a combined coverage report
 
 The script has been enhanced to work on various Linux distributions, including Debian/Ubuntu systems.
 
@@ -177,8 +181,12 @@ export GITHUB_TOKEN_ORG2=your_org2_only_token
 ## Test Reports
 
 After running tests, reports are available in the `test_results` directory:
-- HTML Test Report: `test_results/report.html`
-- Coverage Report: `test_results/coverage/index.html`
+- Unit Tests Report: `test_results/report_unit.html` (when unit tests are run)
+- Integration Tests Report: `test_results/report_integration.html` (when integration tests are run)
+- Real Execution Tests Report: `test_results/report_real_execution.html` (when real execution tests are run)
+- Combined Coverage Report: `test_results/coverage_combined/index.html`
+
+Each report provides detailed information about test results, with pass/fail status and full error logs for any failures.
 
 ## Continuous Integration
 
