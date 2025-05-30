@@ -305,7 +305,7 @@ create_repo() {
 }
 
 # Generate a timestamp suffix for uniqueness
-TIMESTAMP="20250531"
+TIMESTAMP="20250533"
 print_status "Using hardcoded timestamp suffix for unique repositories: $TIMESTAMP"
 
 # Create repositories in first organization
