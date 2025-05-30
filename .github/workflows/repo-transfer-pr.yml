@@ -228,8 +228,8 @@ jobs:
             echo "" >> validation_results.md
             echo "The following repositories would be transferred:" >> validation_results.md
             echo "" >> validation_results.md
-            echo "| Source | Destination | Status |" >> validation_results.md
-            echo "| ------ | ----------- | ------ |" >> validation_results.md
+            echo "| Source | Destination | Validation |" >> validation_results.md
+            echo "| ------ | ----------- | ---------- |" >> validation_results.md
             
             # Extract successful transfers
             grep -E "Would transfer repository" $LATEST_LOG | sed -E 's/.*Would transfer repository ([^ ]+) to ([^ ]+).*/| \1 | \2 | ✅ Passed |/g' >> validation_results.md || echo "No approved transfers found"
