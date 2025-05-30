@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple, Any
 class GitHubRepoTransfer:
     """Class to handle GitHub repository transfer operations."""
 
-    def __init__(self, token: str, debug: bool = False, dry_run: bool = False, auto_approve: bool = False):
+    def __init__(self, token: str, debug: bool = False, dry_run: bool = False, auto_approve: bool = False, confirm_each: bool = False):
         """
         Initialize the GitHubRepoTransfer class.
         
@@ -30,10 +30,12 @@ class GitHubRepoTransfer:
             debug: Enable debug logging
             dry_run: Enable dry-run mode (no actual transfers)
             auto_approve: Skip confirmation prompts
+            confirm_each: Confirm each transfer individually
         """
         self.token = token
         self.dry_run = dry_run
         self.auto_approve = auto_approve
+        self.confirm_each = confirm_each
         self.user_login = None  # Will store the authenticated user's login
         self._validation_done = False  # Flag to avoid redundant validation
 
@@ -555,10 +557,11 @@ class GitHubRepoTransfer:
                 
                 self._log_section_header(f"TRANSFERRING {len(repos)} REPOSITORIES")
                 
-                # Get batch confirmation for all transfers
-                if not self._prompt_for_batch_confirmation(repos):
-                    self._log_section_header("BATCH TRANSFER ABORTED BY USER")
-                    return 0, 0
+                # Get batch confirmation for all transfers if not in confirm_each mode
+                if not self.confirm_each and not self.auto_approve:
+                    if not self._prompt_for_batch_confirmation(repos):
+                        self._log_section_header("BATCH TRANSFER ABORTED BY USER")
+                        return 0, 0
                 
                 for i, row in enumerate(repos, 1):
                     total += 1
@@ -567,6 +570,12 @@ class GitHubRepoTransfer:
                     dest_org = row['dest_org'].strip()
                     
                     self._log_step(i, len(repos), f"Processing {source_org}/{repo_name} → {dest_org}")
+                    
+                    # Prompt for confirmation before each transfer if in confirm_each mode
+                    if self.confirm_each and not self.auto_approve:
+                        if not self._prompt_for_confirmation(source_org, repo_name, dest_org):
+                            self._log_step_result(False, f"Transfer skipped (user declined)", f"{source_org}/{repo_name} → {dest_org}")
+                            continue
                     
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1
@@ -653,6 +662,7 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
     parser.add_argument('--dry-run', action='store_true', help='Dry run mode (no actual transfers, just validation)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose debug logging')
     parser.add_argument('--auto-approve', action='store_true', help='Skip confirmation prompts and automatically approve all transfers')
+    parser.add_argument('--confirm-each', action='store_true', help='Confirm each transfer individually (default is to confirm all transfers at once)')
     
     args = parser.parse_args()
     
@@ -667,7 +677,8 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
         token=github_token,
         debug=args.verbose,
         dry_run=args.dry_run,
-        auto_approve=args.auto_approve
+        auto_approve=args.auto_approve,
+        confirm_each=args.confirm_each
     )
     
     # Process according to selected mode
