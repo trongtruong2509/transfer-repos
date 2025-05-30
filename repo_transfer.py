@@ -373,7 +373,53 @@ class GitHubRepoTransfer:
             print("\nOperation cancelled by user")
             self.logger.info("Operation cancelled by user (KeyboardInterrupt)")
             return False
+    
+    def _prompt_for_batch_confirmation(self, repos: List[Dict[str, str]]) -> bool:
+        """
+        Prompt the user for confirmation before proceeding with a batch of transfers.
+        
+        Args:
+            repos: List of repository dictionaries with source_org, repo_name, dest_org keys
             
+        Returns:
+            bool: True if user confirms, False otherwise
+        """
+        if self.auto_approve:
+            self.logger.info("Auto-approve is enabled, skipping confirmation prompt")
+            return True
+            
+        # Use color for better visibility
+        YELLOW = '\033[93m'  # Yellow
+        GREEN = '\033[92m'   # Green
+        RED = '\033[91m'     # Red
+        RESET = '\033[0m'    # Reset to default
+        
+        print(f"\n{YELLOW}BATCH CONFIRMATION REQUIRED{RESET}")
+        print(f"You are about to transfer {GREEN}{len(repos)} repositories{RESET}:")
+        
+        # Display the list of repositories to be transferred
+        for i, repo in enumerate(repos, 1):
+            source_org = repo['source_org'].strip()
+            repo_name = repo['repo_name'].strip()
+            dest_org = repo['dest_org'].strip()
+            print(f"  {i}. {GREEN}{source_org}/{repo_name}{RESET} → {GREEN}{dest_org}{RESET}")
+        
+        if self.dry_run:
+            print(f"\n{YELLOW}(DRY RUN MODE: No actual transfers will be performed){RESET}")
+        
+        try:
+            response = input(f"\nDo you want to proceed with all these transfers? (y/N) ").strip().lower()
+            if response == 'y' or response == 'yes':
+                self.logger.info(f"User confirmed batch transfer of {len(repos)} repositories")
+                return True
+            else:
+                self.logger.info("User declined batch transfer")
+                return False
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user")
+            self.logger.info("Operation cancelled by user (KeyboardInterrupt)")
+            return False
+    
     def process_single_transfer(self, source_org: str, repo_name: str, dest_org: str) -> bool:
         """Process a single repository transfer with full validation."""
         self._log_section_header(f"Starting GitHub token and organization validation...")
@@ -509,6 +555,11 @@ class GitHubRepoTransfer:
                 
                 self._log_section_header(f"TRANSFERRING {len(repos)} REPOSITORIES")
                 
+                # Get batch confirmation for all transfers
+                if not self._prompt_for_batch_confirmation(repos):
+                    self._log_section_header("BATCH TRANSFER ABORTED BY USER")
+                    return 0, 0
+                
                 for i, row in enumerate(repos, 1):
                     total += 1
                     source_org = row['source_org'].strip()
@@ -516,11 +567,6 @@ class GitHubRepoTransfer:
                     dest_org = row['dest_org'].strip()
                     
                     self._log_step(i, len(repos), f"Processing {source_org}/{repo_name} → {dest_org}")
-                    
-                    # Prompt for confirmation before each transfer
-                    if not self._prompt_for_confirmation(source_org, repo_name, dest_org):
-                        self._log_step_result(False, f"Transfer skipped (user declined)", f"{source_org}/{repo_name} → {dest_org}")
-                        continue
                     
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1
