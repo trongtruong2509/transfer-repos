@@ -139,31 +139,39 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          # Ensure script exits with 0 for dry runs
+          # Trigger dry-run
           python repo_transfer.py --csv transfer_repos.csv --dry-run --auto-approve --verbose
           
           # Extract key information from logs for PR comment
-          LATEST_LOG=$(ls -t logs/repo_transfer_*_dry_run.log | head -1)
+          LATEST_LOG=$(ls -t logs/repo_transfer_*_dry_run.log | head -1 || echo "No log file found")
           echo "Latest log file: $LATEST_LOG"
           
-          # Create a summary file
-          echo "## Repository Transfer Validation Results" > validation_results.md
-          echo "" >> validation_results.md
-          echo "The following validations were performed:" >> validation_results.md
-          echo "" >> validation_results.md
-          
-          # Extract organization validations
-          echo "### Organization Validations" >> validation_results.md
-          echo "" >> validation_results.md
-          grep -A 2 "Validating access to organization" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md
-          echo "" >> validation_results.md
-          
-          # Extract repository validations
-          echo "### Repository Validations" >> validation_results.md
-          echo "" >> validation_results.md
-          grep -A 2 "Validating repository access" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md
-          
-          cat validation_results.md
+          # Ensure log file exists before proceeding
+          if [ -f "$LATEST_LOG" ]; then
+            # Create a summary file
+            echo "## Repository Transfer Validation Results" > validation_results.md
+            echo "" >> validation_results.md
+            echo "The following validations were performed:" >> validation_results.md
+            echo "" >> validation_results.md
+            
+            # Extract organization validations - add || true to prevent grep from failing the build
+            echo "### Organization Validations" >> validation_results.md
+            echo "" >> validation_results.md
+            grep -A 2 "Validating access to organization" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No organization validation data found" >> validation_results.md
+            echo "" >> validation_results.md
+            
+            # Extract repository validations - add || true to prevent grep from failing the build
+            echo "### Repository Validations" >> validation_results.md
+            echo "" >> validation_results.md
+            grep -A 2 "Validating repository access" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No repository validation data found" >> validation_results.md
+            
+            cat validation_results.md
+          else
+            echo "Warning: No log file found to analyze. Creating empty validation results."
+            echo "## Repository Transfer Validation Results" > validation_results.md
+            echo "" >> validation_results.md
+            echo "No validation data available." >> validation_results.md
+          fi
 
       - name: Upload logs
         uses: actions/upload-artifact@v4
