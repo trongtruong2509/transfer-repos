@@ -330,8 +330,6 @@ jobs:
               statusBadge + '\n\n' +
               '## Summary\n' +
               'This PR includes repository transfers that have been validated with a dry-run.\n\n' +
-              transferSummary + '\n\n' +
-              csvValidation + '\n\n' +
               validationResults + '\n\n' +
               '## Next Steps\n' +
               '1. Review the validation results and dry-run logs\n' +
