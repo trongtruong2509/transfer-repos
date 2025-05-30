@@ -223,23 +223,6 @@ jobs:
           # Ensure log file exists before proceeding
           if [ -f "$LATEST_LOG" ]; then
             # Create a summary file
-            echo "## Repository Transfer Validation Results" > validation_results.md
-            echo "" >> validation_results.md
-            echo "The following validations were performed:" >> validation_results.md
-            echo "" >> validation_results.md
-            
-            # Extract organization validations
-            echo "### Organization Validations" >> validation_results.md
-            echo "" >> validation_results.md
-            grep -E "Checking access to (source|destination) organization|Source organization access confirmed|Destination organization access confirmed" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No organization validation data found" >> validation_results.md
-            echo "" >> validation_results.md
-            
-            # Extract repository validations
-            echo "### Repository Validations" >> validation_results.md
-            echo "" >> validation_results.md
-            grep -E "Checking access to repository|Repository access confirmed" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No repository validation data found" >> validation_results.md
-            echo "" >> validation_results.md
-            
             # Add comprehensive transfer summary
             echo "### Transfer Summary" >> validation_results.md
             echo "" >> validation_results.md
@@ -249,7 +232,7 @@ jobs:
             echo "| ------ | ----------- | ------ |" >> validation_results.md
             
             # Extract successful transfers
-            grep -E "Would transfer repository" $LATEST_LOG | sed -E 's/.*Would transfer repository ([^ ]+) to ([^ ]+).*/| \1 | \2 | ✅ Approved |/g' >> validation_results.md || echo "No approved transfers found"
+            grep -E "Would transfer repository" $LATEST_LOG | sed -E 's/.*Would transfer repository ([^ ]+) to ([^ ]+).*/| \1 | \2 | ✅ Passed |/g' >> validation_results.md || echo "No approved transfers found"
             
             # Extract declined transfers if any
             grep -E "Transfer skipped \(user declined\)" $LATEST_LOG | grep -E -o "([a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+) → ([a-zA-Z0-9_-]+)" | sed -E 's/([^ ]+) → ([^ ]+)/| \1 | \2 | ❌ Declined |/g' >> validation_results.md || echo "No declined transfers found" > /dev/null
@@ -345,8 +328,6 @@ jobs:
               statusBadge + '\n\n' +
               '## Summary\n' +
               'This PR includes repository transfers that have been validated with a dry-run.\n\n' +
-              transferSummary + '\n\n' +
-              csvValidation + '\n\n' +
               validationResults + '\n\n' +
               '## Next Steps\n' +
               '1. Review the validation results and dry-run logs\n' +
