@@ -102,8 +102,8 @@ class TestRealExecution:
         
     def test_real_single_transfer(self, github_token, setup_test_repos):
         """Test transferring a single repository for real."""
-        # Create the transfer instance - NOT in dry run mode
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        # Create the transfer instance - NOT in dry run mode but with auto-approve
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Use the unique repository name with timestamp suffix
         repo_name = f"test-empty-org1-{TEST_REPO_SUFFIX}"
@@ -123,7 +123,7 @@ class TestRealExecution:
     
     def test_real_public_repo_transfer(self, github_token, setup_test_repos):
         """Test transferring a public repository for real."""
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Use the unique repository name with timestamp suffix
         repo_name = f"test-public-org1-{TEST_REPO_SUFFIX}"
@@ -142,7 +142,7 @@ class TestRealExecution:
     
     def test_real_private_repo_transfer(self, github_token, setup_test_repos):
         """Test transferring a private repository for real."""
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Use the unique repository name with timestamp suffix
         repo_name = f"test-private-org1-{TEST_REPO_SUFFIX}"
@@ -161,7 +161,7 @@ class TestRealExecution:
     
     def test_real_repo_with_branches_transfer(self, github_token, setup_test_repos):
         """Test transferring a repository with multiple branches."""
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Use the unique repository name with timestamp suffix
         repo_name = f"test-with-branches-org1-{TEST_REPO_SUFFIX}"
@@ -180,7 +180,7 @@ class TestRealExecution:
     
     def test_real_repo_with_issues_transfer(self, github_token, setup_test_repos):
         """Test transferring a repository with issues."""
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Use the unique repository name with timestamp suffix
         repo_name = f"test-with-issues-org1-{TEST_REPO_SUFFIX}"
@@ -199,7 +199,7 @@ class TestRealExecution:
     
     def test_real_repo_with_actions_transfer(self, github_token, setup_test_repos):
         """Test transferring a repository with GitHub Actions."""
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Use the unique repository name with timestamp suffix
         repo_name = f"test-with-actions-org1-{TEST_REPO_SUFFIX}"
@@ -218,7 +218,7 @@ class TestRealExecution:
     
     def test_real_csv_batch_transfer(self, github_token, setup_test_repos, temp_csv_file):
         """Test transferring multiple repositories using a CSV file."""
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Create a list of repositories with unique names
         repo_names = [
@@ -263,7 +263,7 @@ class TestRealExecution:
 
     def test_real_error_handling_nonexistent_repo(self, github_token):
         """Test handling of transfers with nonexistent repositories."""
-        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False, auto_approve=True)
         
         # Try to transfer a nonexistent repository
         result = transfer.process_single_transfer(TEST_ORG_1, "nonexistent-repo", TEST_ORG_2)

@@ -20,7 +20,8 @@ class TestCSVProcessing:
 
     @patch.object(GitHubRepoTransfer, 'transfer_repository')
     @patch.object(GitHubRepoTransfer, 'validate_token')
-    def test_valid_csv_processing(self, mock_validate_token, mock_transfer, sample_csv_path):
+    @patch.object(GitHubRepoTransfer, '_prompt_for_batch_confirmation', return_value=True)
+    def test_valid_csv_processing(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path):
         """Test processing of a valid CSV file."""
         # Set up successful token validation
         mock_validate_token.return_value = True
@@ -37,6 +38,7 @@ class TestCSVProcessing:
         assert total == 5
         assert mock_validate_token.call_count == 1
         assert mock_transfer.call_count == 5
+        assert mock_batch_confirm.call_count == 1
 
     @patch.object(GitHubRepoTransfer, 'validate_token')
     def test_csv_file_not_found(self, mock_validate_token):
@@ -82,7 +84,8 @@ class TestCSVProcessing:
 
     @patch.object(GitHubRepoTransfer, 'transfer_repository')
     @patch.object(GitHubRepoTransfer, 'validate_token')
-    def test_csv_processing_with_exception(self, mock_validate_token, mock_transfer, sample_csv_path):
+    @patch.object(GitHubRepoTransfer, '_prompt_for_batch_confirmation', return_value=True)
+    def test_csv_processing_with_exception(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path):
         """Test handling of exceptions during CSV processing."""
         # Set up successful token validation
         mock_validate_token.return_value = True
@@ -99,10 +102,12 @@ class TestCSVProcessing:
         assert total == 2
         assert mock_validate_token.call_count == 1
         assert mock_transfer.call_count == 2
+        assert mock_batch_confirm.call_count == 1
 
     @patch.object(GitHubRepoTransfer, 'transfer_repository')
     @patch.object(GitHubRepoTransfer, 'validate_token')
-    def test_csv_dry_run(self, mock_validate_token, mock_transfer, sample_csv_path):
+    @patch.object(GitHubRepoTransfer, '_prompt_for_batch_confirmation', return_value=True)
+    def test_csv_dry_run(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path):
         """Test CSV processing in dry-run mode."""
         # Set up successful token validation
         mock_validate_token.return_value = True
@@ -119,3 +124,4 @@ class TestCSVProcessing:
         assert total == 5
         assert mock_validate_token.call_count == 1
         assert mock_transfer.call_count == 5
+        assert mock_batch_confirm.call_count == 1

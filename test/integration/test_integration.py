@@ -63,7 +63,7 @@ class TestRealIntegration:
         if admin_token == "mock-admin-token":
             pytest.skip("No real admin token provided")
             
-        transfer = GitHubRepoTransfer(token=admin_token, debug=True, dry_run=True)
+        transfer = GitHubRepoTransfer(token=admin_token, debug=True, dry_run=True, auto_approve=True)
         result = transfer.process_single_transfer(TEST_ORG_1, TEST_REPO, TEST_ORG_2)
         
         assert result is True
@@ -72,7 +72,8 @@ class TestMockedIntegration:
     """Integration tests with mocked GitHub API."""
     
     @patch('requests.Session.get')
-    def test_end_to_end_single_transfer(self, mock_get, mock_successful_auth_response, 
+    @patch.object(GitHubRepoTransfer, '_prompt_for_confirmation', return_value=True)
+    def test_end_to_end_single_transfer(self, mock_confirm, mock_get, mock_successful_auth_response, 
                                        mock_org_success_response, mock_repo_success_response,
                                        mock_membership_admin_response):
         """Test end-to-end single transfer with mocked responses."""
@@ -98,9 +99,11 @@ class TestMockedIntegration:
             assert result is True
             assert mock_get.call_count == 5  # Update from 6 to 5 to match actual call count
             mock_post.assert_called_once()
+            assert mock_confirm.call_count == 1
     
     @patch('requests.Session.get')
-    def test_end_to_end_csv_transfer(self, mock_get, mock_successful_auth_response, 
+    @patch.object(GitHubRepoTransfer, '_prompt_for_batch_confirmation', return_value=True)
+    def test_end_to_end_csv_transfer(self, mock_batch_confirm, mock_get, mock_successful_auth_response, 
                                    mock_org_success_response, mock_repo_success_response,
                                    mock_membership_admin_response, sample_csv_path):
         """Test end-to-end CSV transfer with mocked responses."""
@@ -119,6 +122,7 @@ class TestMockedIntegration:
             
             assert successful == 5
             assert total == 5
+            assert mock_batch_confirm.call_count == 1
     
     @patch('sys.argv', ['repo_transfer.py', '--source-org', TEST_ORG_1, '--repo-name', TEST_REPO, '--dest-org', TEST_ORG_2])
     @patch('os.environ.get')
