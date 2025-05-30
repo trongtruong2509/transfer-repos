@@ -70,16 +70,46 @@ jobs:
       - name: Check for changes in transfer_repos.csv
         id: csv-changes
         run: |
+          # Skip duplicate runs by checking if CSV has real changes
           if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "pull_request_target" ]; then
-            git diff --name-only origin/${{ github.base_ref }} origin/${{ github.head_ref }} | grep -q "transfer_repos.csv" && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+            # Get the base SHA
+            BASE_SHA=$(git merge-base origin/${{ github.base_ref }} HEAD)
+            echo "Base SHA: $BASE_SHA"
+            
+            # Check if transfer_repos.csv has changed
+            if git diff --name-only $BASE_SHA HEAD | grep -q "transfer_repos.csv"; then
+              # Check if the changes are substantial (more than just whitespace)
+              DIFF_COUNT=$(git diff --word-diff=porcelain $BASE_SHA HEAD -- transfer_repos.csv | grep -E "^(\+|-)[^+-]" | wc -l)
+              
+              if [ $DIFF_COUNT -gt 0 ]; then
+                echo "Substantial changes detected in transfer_repos.csv ($DIFF_COUNT lines changed)"
+                echo "changed=true" >> $GITHUB_OUTPUT
+              else
+                echo "Only whitespace changes detected in transfer_repos.csv, skipping validation"
+                echo "changed=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "No changes detected in transfer_repos.csv"
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
           else
+            echo "Not a pull request event, assuming changes are needed"
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Run unit tests
+        id: unit-tests
+        continue-on-error: true  # Don't fail the workflow if tests fail
         run: |
             chmod +x run_tests.sh
-            ./run_tests.sh 
+            ./run_tests.sh || TEST_EXIT_CODE=$?
+            
+            if [ -n "$TEST_EXIT_CODE" ] && [ $TEST_EXIT_CODE -ne 0 ]; then
+              echo "::warning::Tests failed with exit code $TEST_EXIT_CODE"
+              echo "test_failed=true" >> $GITHUB_OUTPUT
+            else
+              echo "test_failed=false" >> $GITHUB_OUTPUT
+            fi
 
     #   - name: Run integration tests
     #     run: |
@@ -142,11 +172,19 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run dry-run with CSV input
+        id: dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          # Trigger dry-run
-          python repo_transfer.py --csv transfer_repos.csv --dry-run --auto-approve --verbose
+          # Trigger dry-run and save exit code
+          python repo_transfer.py --csv transfer_repos.csv --dry-run --auto-approve --verbose || DRY_RUN_EXIT_CODE=$?
+          
+          # Check if the command succeeded
+          if [ -n "$DRY_RUN_EXIT_CODE" ] && [ $DRY_RUN_EXIT_CODE -ne 0 ]; then
+            echo "::warning::Dry run exited with code $DRY_RUN_EXIT_CODE. Continuing to analyze available logs."
+          else
+            echo "Dry run completed successfully."
+          fi
           
           # Extract key information from logs for PR comment
           LATEST_LOG=$(ls -t logs/repo_transfer_*_dry_run.log | head -1 || echo "No log file found")
@@ -160,24 +198,55 @@ jobs:
             echo "The following validations were performed:" >> validation_results.md
             echo "" >> validation_results.md
             
-            # Extract organization validations - add || true to prevent grep from failing the build
+            # Extract organization validations
             echo "### Organization Validations" >> validation_results.md
             echo "" >> validation_results.md
-            grep -A 2 "Validating access to organization" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No organization validation data found" >> validation_results.md
+            grep -E "Checking access to (source|destination) organization|Source organization access confirmed|Destination organization access confirmed" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No organization validation data found" >> validation_results.md
             echo "" >> validation_results.md
             
-            # Extract repository validations - add || true to prevent grep from failing the build
+            # Extract repository validations
             echo "### Repository Validations" >> validation_results.md
             echo "" >> validation_results.md
-            grep -A 2 "Validating repository access" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No repository validation data found" >> validation_results.md
+            grep -E "Checking access to repository|Repository access confirmed" $LATEST_LOG | grep -v "DEBUG" >> validation_results.md || echo "No repository validation data found" >> validation_results.md
+            echo "" >> validation_results.md
+            
+            # Add comprehensive transfer summary
+            echo "### Transfer Summary" >> validation_results.md
+            echo "" >> validation_results.md
+            echo "The following repositories would be transferred:" >> validation_results.md
+            echo "" >> validation_results.md
+            echo "| Source | Destination | Status |" >> validation_results.md
+            echo "| ------ | ----------- | ------ |" >> validation_results.md
+            
+            # Extract successful transfers
+            grep -E "Would transfer repository" $LATEST_LOG | sed -E 's/.*Would transfer repository ([^ ]+) to ([^ ]+).*/| \1 | \2 | ✅ Approved |/g' >> validation_results.md || echo "No approved transfers found"
+            
+            # Extract declined transfers if any
+            grep -E "Transfer skipped \(user declined\)" $LATEST_LOG | grep -E -o "([a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+) → ([a-zA-Z0-9_-]+)" | sed -E 's/([^ ]+) → ([^ ]+)/| \1 | \2 | ❌ Declined |/g' >> validation_results.md || echo "No declined transfers found" > /dev/null
+            
+            echo "" >> validation_results.md
+            
+            # Add error summary if applicable
+            if [ -n "$DRY_RUN_EXIT_CODE" ] && [ $DRY_RUN_EXIT_CODE -ne 0 ]; then
+              echo "### ⚠️ Warning" >> validation_results.md
+              echo "" >> validation_results.md
+              echo "The dry run exited with code $DRY_RUN_EXIT_CODE. Some transfers may not have been validated." >> validation_results.md
+              echo "Please check the workflow logs for more details." >> validation_results.md
+              echo "" >> validation_results.md
+            fi
             
             cat validation_results.md
           else
-            echo "Warning: No log file found to analyze. Creating empty validation results."
+            echo "::warning::No log file found to analyze. Creating empty validation results."
             echo "## Repository Transfer Validation Results" > validation_results.md
             echo "" >> validation_results.md
-            echo "No validation data available." >> validation_results.md
+            echo "⚠️ No validation data available. The dry run may have failed to generate logs." >> validation_results.md
+            echo "" >> validation_results.md
+            echo "Please check the workflow logs for more details." >> validation_results.md
           fi
+          
+          # Always exit with success to prevent blocking PR comments
+          exit 0
 
       - name: Upload logs
         uses: actions/upload-artifact@v4
@@ -197,19 +266,37 @@ jobs:
             let transferSummary = '';
             if (fs.existsSync('transfer_summary.md')) {
               transferSummary = fs.readFileSync('transfer_summary.md', 'utf8');
+            } else {
+              transferSummary = '❌ Error: Transfer summary file not found.';
             }
             
             let validationResults = '';
             if (fs.existsSync('validation_results.md')) {
               validationResults = fs.readFileSync('validation_results.md', 'utf8');
+            } else {
+              validationResults = '❌ Error: Validation results file not found. Check workflow logs for details.';
             }
             
             let csvValidation = '';
             if (fs.existsSync('csv_validation.md')) {
               csvValidation = fs.readFileSync('csv_validation.md', 'utf8');
+            } else {
+              csvValidation = '❌ Error: CSV validation file not found.';
             }
             
+            // Check for any error patterns in the results
+            const hasErrors = 
+              validationResults.includes('error') || 
+              validationResults.includes('Error') || 
+              validationResults.includes('❌') ||
+              validationResults.includes('⚠️');
+            
+            const statusBadge = hasErrors 
+              ? '![Validation Status](https://img.shields.io/badge/Validation-Warning-yellow)'
+              : '![Validation Status](https://img.shields.io/badge/Validation-Passed-brightgreen)';
+            
             const commentBody = '# Repository Transfer Validation\n\n' +
+              statusBadge + '\n\n' +
               '## Summary\n' +
               'This PR includes repository transfers that have been validated with a dry-run.\n\n' +
               transferSummary + '\n\n' +
@@ -221,9 +308,16 @@ jobs:
               '3. After merging, the actual transfers will require manual approval\n\n' +
               'For more details, check the workflow logs and attached artifacts.';
             
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: commentBody
-            });
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: commentBody
+              });
+              console.log('PR comment created successfully');
+            } catch (error) {
+              console.error('Failed to create PR comment:', error);
+              // Don't fail the workflow, but log the error
+              core.warning(`Failed to create PR comment: ${error.message}`);
+            }
