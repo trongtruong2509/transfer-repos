@@ -2,10 +2,11 @@
 # Run all tests and generate an HTML report
 #
 # Usage:
-#   ./run_tests.sh             # Run standard tests (skipping real tests)
-#   ./run_tests.sh -f          # Run full tests including real integration tests
-#   ./run_tests.sh -r          # Run only real execution tests that perform actual transfers
-#   ./run_tests.sh -f -r       # Run full tests and real execution tests
+#   ./run_tests.sh             # Run unit tests only
+#   ./run_tests.sh -i          # Run integration tests only
+#   ./run_tests.sh -r          # Run real execution tests only
+#   ./run_tests.sh -f          # Run unit tests and integration tests
+#   ./run_tests.sh --all       # Run all tests (unit, integration, real)
 
 # Source environment variables from .env file if it exists
 if [ -f ".env" ]; then
@@ -31,28 +32,45 @@ else
     fi
 fi
 
-# Default is to skip real integration tests
-RUN_FULL_TESTS=0
-# Default is to skip real execution tests 
+# Default is to run unit tests only
+RUN_UNIT_TESTS=1
+RUN_INTEGRATION_TESTS=0
 RUN_REAL_EXECUTION=0
 
 # Process command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -f|--full)
-            RUN_FULL_TESTS=1
+        -i|--integration)
+            RUN_UNIT_TESTS=0
+            RUN_INTEGRATION_TESTS=1
+            RUN_REAL_EXECUTION=0
             shift
             ;;
         -r|--real-execution)
+            RUN_UNIT_TESTS=0
+            RUN_INTEGRATION_TESTS=0
+            RUN_REAL_EXECUTION=1
+            shift
+            ;;
+        -f|--full)
+            RUN_UNIT_TESTS=1
+            RUN_INTEGRATION_TESTS=1
+            RUN_REAL_EXECUTION=0
+            shift
+            ;;
+        --all)
+            RUN_UNIT_TESTS=1
+            RUN_INTEGRATION_TESTS=1
             RUN_REAL_EXECUTION=1
             shift
             ;;
         -h|--help)
             echo "Usage:"
-            echo "  ./run_tests.sh             # Run standard tests (skipping real tests)"
-            echo "  ./run_tests.sh -f          # Run full tests including real integration tests"
-            echo "  ./run_tests.sh -r          # Run only real execution tests that perform actual transfers"
-            echo "  ./run_tests.sh -f -r       # Run full tests and real execution tests"
+            echo "  ./run_tests.sh             # Run unit tests only"
+            echo "  ./run_tests.sh -i          # Run integration tests only"
+            echo "  ./run_tests.sh -r          # Run real execution tests only"
+            echo "  ./run_tests.sh -f          # Run unit tests and integration tests"
+            echo "  ./run_tests.sh --all       # Run all tests (unit, integration, real)"
             echo "  ./run_tests.sh -h          # Show this help message"
             exit 0
             ;;
@@ -256,16 +274,48 @@ fi
 # Run tests with coverage and generate HTML report
 print_status "Running tests..."
 
-# Set up the environment variable for integration tests if full tests are requested
-if [ "$RUN_FULL_TESTS" -eq 1 ]; then
-    print_status "Running FULL tests including real integration tests..."
+# Configure test environment variables
+if [ "$RUN_INTEGRATION_TESTS" -eq 1 ]; then
+    print_status "Integration tests enabled..."
     export GITHUB_TEST_INTEGRATION=1
 else
-    print_status "Running standard tests (skipping real integration tests)..."
     export GITHUB_TEST_INTEGRATION=0
 fi
 
-# Set up the environment variable for real execution tests if requested
+# Set paths for test results
+mkdir -p test_results
+
+# Function to run tests and collect results
+run_tests() {
+    local test_path=$1
+    local test_name=$2
+    
+    print_status "Running $test_name tests..."
+    $PYTHON_CMD -m pytest $test_path \
+        --html=test_results/report_${test_name}.html \
+        --cov=$MODULE_NAME \
+        --cov-report=html:test_results/coverage_${test_name} \
+        --cov-append \
+        -v || {
+        print_error "Some $test_name tests failed."
+        TEST_STATUS=1  # Set error status but continue to show report
+    }
+}
+
+# Clear coverage data before starting
+coverage erase 2>/dev/null || true
+
+# Run unit tests if enabled
+if [ "$RUN_UNIT_TESTS" -eq 1 ]; then
+    run_tests "test/unit" "unit"
+fi
+
+# Run integration tests if enabled
+if [ "$RUN_INTEGRATION_TESTS" -eq 1 ]; then
+    run_tests "test/integration" "integration"
+fi
+
+# Check if real execution tests are enabled
 if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
     print_warning "=========================================================================="
     print_warning "CAUTION: You are about to run REAL EXECUTION tests"
@@ -281,9 +331,6 @@ if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
         exit 0
     fi
     
-    print_status "Running REAL EXECUTION tests that perform actual repository transfers..."
-    export GITHUB_TEST_REAL_EXECUTION=1
-    
     # Check if GITHUB_TOKEN environment variable is set
     if [ -z "$GITHUB_TOKEN" ]; then
         print_error "GITHUB_TOKEN environment variable is required for real execution tests."
@@ -298,37 +345,26 @@ if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
         exit 1
     fi
     
-    # Only run real execution tests
-    print_status "Running only real execution tests..."
-    $PYTHON_CMD -m pytest test/real_execution \
-        --html=test_results/report.html \
-        --cov=$MODULE_NAME \
-        --cov-report=html:test_results/coverage \
-        -v || {
-        print_error "Some tests failed."
-        TEST_STATUS=1  # Set error status but continue to show report
-    }
+    export GITHUB_TEST_REAL_EXECUTION=1
+    run_tests "test/real_execution" "real_execution"
 else
     export GITHUB_TEST_REAL_EXECUTION=0
-    
-    # Run standard tests
-    $PYTHON_CMD -m pytest test/ \
-        --html=test_results/report.html \
-        --cov=$MODULE_NAME \
-        --cov-report=html:test_results/coverage \
-        -v \
-        -k "not test_logging" || {
-        print_error "Some tests failed."
-        TEST_STATUS=1  # Set error status but continue to show report
-    }
 fi
 
-# Check if the coverage report was generated
-if [ -f "test_results/coverage/index.html" ]; then
-    coverage_percentage=$(grep -o "total.*%" test_results/coverage/index.html | grep -o "[0-9]\+%" | head -1)
-    print_status "Test coverage: $coverage_percentage"
+# Generate combined report
+if [ -d "test_results/coverage_unit" ] || [ -d "test_results/coverage_integration" ] || [ -d "test_results/coverage_real_execution" ]; then
+    # Combine coverage data
+    $PYTHON_CMD -m coverage html -d test_results/coverage_combined
+    
+    # Check if the coverage report was generated
+    if [ -f "test_results/coverage_combined/index.html" ]; then
+        coverage_percentage=$(grep -o "total.*%" test_results/coverage_combined/index.html | grep -o "[0-9]\+%" | head -1)
+        print_status "Test coverage: $coverage_percentage"
+    else
+        print_warning "Combined coverage report was not generated."
+    fi
 else
-    print_warning "Coverage report was not generated."
+    print_warning "No coverage reports were generated."
 fi
 
 # Deactivate virtual environment
@@ -340,8 +376,18 @@ else
     print_status "Testing completed successfully. Reports available in test_results directory."
 fi
 
-print_status "HTML report: test_results/report.html"
-print_status "Coverage report: test_results/coverage/index.html"
+# List all generated reports
+print_status "Generated test reports:"
+if [ "$RUN_UNIT_TESTS" -eq 1 ]; then
+    print_status "- Unit tests HTML report: test_results/report_unit.html"
+fi
+if [ "$RUN_INTEGRATION_TESTS" -eq 1 ]; then
+    print_status "- Integration tests HTML report: test_results/report_integration.html"
+fi
+if [ "$RUN_REAL_EXECUTION" -eq 1 ]; then
+    print_status "- Real execution tests HTML report: test_results/report_real_execution.html"
+fi
+print_status "- Combined coverage report: test_results/coverage_combined/index.html"
 
 # Exit with the test status
 exit ${TEST_STATUS:-0}

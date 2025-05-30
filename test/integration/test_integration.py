@@ -54,8 +54,26 @@ class TestRealIntegration:
             pytest.skip("No real admin token provided")
             
         transfer = GitHubRepoTransfer(token=admin_token, debug=True)
-        result = transfer.validate_repo_access(TEST_ORG_1, TEST_REPO)
         
+        # First check if org exists
+        if not transfer.validate_org_access(TEST_ORG_1):
+            pytest.skip(f"Organization {TEST_ORG_1} is not accessible")
+        
+        # Try with test-empty-org1 first (often exists)
+        repo_name = f"test-empty-org1-{TEST_REPO_SUFFIX}"
+        
+        # Attempt to make a direct API call to check if repo exists
+        response = transfer.session.get(f"https://api.github.com/repos/{TEST_ORG_1}/{repo_name}")
+        if response.status_code != 200:
+            # If not found, try with the default repo from conftest
+            repo_name = TEST_REPO
+            # Check if that exists
+            response = transfer.session.get(f"https://api.github.com/repos/{TEST_ORG_1}/{repo_name}")
+            if response.status_code != 200:
+                pytest.skip(f"No test repositories found in {TEST_ORG_1}. Run setup_test_repos.sh first.")
+        
+        # Now validate the repository we found
+        result = transfer.validate_repo_access(TEST_ORG_1, repo_name)
         assert result is True
     
     def test_real_transfer_dry_run(self, admin_token):
@@ -64,8 +82,26 @@ class TestRealIntegration:
             pytest.skip("No real admin token provided")
             
         transfer = GitHubRepoTransfer(token=admin_token, debug=True, dry_run=True, auto_approve=True)
-        result = transfer.process_single_transfer(TEST_ORG_1, TEST_REPO, TEST_ORG_2)
         
+        # First check if orgs exist
+        if not transfer.validate_org_access(TEST_ORG_1) or not transfer.validate_org_access(TEST_ORG_2):
+            pytest.skip(f"One or both organizations ({TEST_ORG_1}, {TEST_ORG_2}) are not accessible")
+        
+        # Try with test-empty-org1 first (often exists)
+        repo_name = f"test-empty-org1-{TEST_REPO_SUFFIX}"
+        
+        # Attempt to make a direct API call to check if repo exists
+        response = transfer.session.get(f"https://api.github.com/repos/{TEST_ORG_1}/{repo_name}")
+        if response.status_code != 200:
+            # If not found, try with the default repo from conftest
+            repo_name = TEST_REPO
+            # Check if that exists
+            response = transfer.session.get(f"https://api.github.com/repos/{TEST_ORG_1}/{repo_name}")
+            if response.status_code != 200:
+                pytest.skip(f"No test repositories found in {TEST_ORG_1}. Run setup_test_repos.sh first.")
+        
+        # Now run the dry-run transfer with the repo we found
+        result = transfer.process_single_transfer(TEST_ORG_1, repo_name, TEST_ORG_2)
         assert result is True
 
 class TestMockedIntegration:
