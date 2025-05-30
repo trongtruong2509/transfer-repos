@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple, Any
 class GitHubRepoTransfer:
     """Class to handle GitHub repository transfer operations."""
 
-    def __init__(self, token: str, debug: bool = False, dry_run: bool = False):
+    def __init__(self, token: str, debug: bool = False, dry_run: bool = False, auto_approve: bool = False):
         """
         Initialize the GitHubRepoTransfer class.
         
@@ -29,9 +29,11 @@ class GitHubRepoTransfer:
             token: GitHub API token
             debug: Enable debug logging
             dry_run: Enable dry-run mode (no actual transfers)
+            auto_approve: Skip confirmation prompts
         """
         self.token = token
         self.dry_run = dry_run
+        self.auto_approve = auto_approve
         self.user_login = None  # Will store the authenticated user's login
         self._validation_done = False  # Flag to avoid redundant validation
 
@@ -252,6 +254,8 @@ class GitHubRepoTransfer:
             self._log_step_result(True, f"Repository access confirmed")
             
             self._log_section_header("Validation Successful")
+            
+            # Removed confirmation prompt here since it's handled in calling methods
         
         # In dry-run mode, just log what would happen
         if self.dry_run:
@@ -328,6 +332,47 @@ class GitHubRepoTransfer:
         
         # Add yellow color to the warning symbol
         self.logger.warning(f"{YELLOW}⚠{RESET} {message}")
+    
+    def _prompt_for_confirmation(self, source_org: str, repo_name: str, dest_org: str) -> bool:
+        """
+        Prompt the user for confirmation before proceeding with the transfer.
+        
+        Args:
+            source_org: Source GitHub organization
+            repo_name: Repository name
+            dest_org: Destination GitHub organization
+            
+        Returns:
+            bool: True if user confirms, False otherwise
+        """
+        if self.auto_approve:
+            self.logger.info("Auto-approve is enabled, skipping confirmation prompt")
+            return True
+            
+        # Use color for better visibility
+        YELLOW = '\033[93m'  # Yellow
+        GREEN = '\033[92m'   # Green
+        RED = '\033[91m'     # Red
+        RESET = '\033[0m'    # Reset to default
+        
+        print(f"\n{YELLOW}CONFIRMATION REQUIRED{RESET}")
+        print(f"You are about to transfer repository: {GREEN}{source_org}/{repo_name}{RESET} to {GREEN}{dest_org}{RESET}")
+        
+        if self.dry_run:
+            print(f"{YELLOW}(DRY RUN MODE: No actual transfer will be performed){RESET}")
+        
+        try:
+            response = input(f"Do you want to proceed with this transfer? (y/N) ").strip().lower()
+            if response == 'y' or response == 'yes':
+                self.logger.info("User confirmed transfer")
+                return True
+            else:
+                self.logger.info("User declined transfer")
+                return False
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user")
+            self.logger.info("Operation cancelled by user (KeyboardInterrupt)")
+            return False
             
     def process_single_transfer(self, source_org: str, repo_name: str, dest_org: str) -> bool:
         """Process a single repository transfer with full validation."""
@@ -386,6 +431,12 @@ class GitHubRepoTransfer:
         # Set a flag to indicate validation is already done
         self._validation_done = True
         
+        # Ask for confirmation before proceeding with transfer
+        if not self._prompt_for_confirmation(source_org, repo_name, dest_org):
+            self._log_section_header("TRANSFER ABORTED BY USER")
+            self._validation_done = False  # Reset flag
+            return False
+            
         # Process the transfer
         self._log_section_header(f"STARTING REPOSITORY TRANSFER")
         try:
@@ -465,6 +516,11 @@ class GitHubRepoTransfer:
                     dest_org = row['dest_org'].strip()
                     
                     self._log_step(i, len(repos), f"Processing {source_org}/{repo_name} → {dest_org}")
+                    
+                    # Prompt for confirmation before each transfer
+                    if not self._prompt_for_confirmation(source_org, repo_name, dest_org):
+                        self._log_step_result(False, f"Transfer skipped (user declined)", f"{source_org}/{repo_name} → {dest_org}")
+                        continue
                     
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1
@@ -550,6 +606,7 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
     # Common arguments
     parser.add_argument('--dry-run', action='store_true', help='Dry run mode (no actual transfers, just validation)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose debug logging')
+    parser.add_argument('--auto-approve', action='store_true', help='Skip confirmation prompts and automatically approve all transfers')
     
     args = parser.parse_args()
     
@@ -563,7 +620,8 @@ Note: GitHub token must be set in the GITHUB_TOKEN environment variable.
     transfer = GitHubRepoTransfer(
         token=github_token,
         debug=args.verbose,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        auto_approve=args.auto_approve
     )
     
     # Process according to selected mode

@@ -305,30 +305,30 @@ EOF
 }
 
 # Generate a timestamp suffix for uniqueness
-TIMESTAMP=$(date +%Y%m%d%H%M%S)
-print_status "Using timestamp suffix for unique repositories: $TIMESTAMP"
+TIMESTAMP="20250530"
+print_status "Using hardcoded timestamp suffix for unique repositories: $TIMESTAMP"
 
 # Create repositories in first organization
-print_status "Creating repositories in $ORG1..."
-create_repo "$ORG1" "test-empty-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-empty-org1-$TIMESTAMP in $ORG1"
-create_repo "$ORG1" "test-public-org1-$TIMESTAMP" "public" || print_warning "Failed to create test-public-org1-$TIMESTAMP in $ORG1"
-create_repo "$ORG1" "test-private-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-private-org1-$TIMESTAMP in $ORG1"
-create_repo "$ORG1" "test-with-branches-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-branches-org1-$TIMESTAMP in $ORG1"
-create_repo "$ORG1" "test-with-issues-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-issues-org1-$TIMESTAMP in $ORG1"
-create_repo "$ORG1" "test-with-actions-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-actions-org1-$TIMESTAMP in $ORG1"
+print_status "Creating repositories in nova-iris..."
+create_repo "nova-iris" "test-empty-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-empty-org1-$TIMESTAMP in nova-iris"
+create_repo "nova-iris" "test-public-org1-$TIMESTAMP" "public" || print_warning "Failed to create test-public-org1-$TIMESTAMP in nova-iris"
+create_repo "nova-iris" "test-private-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-private-org1-$TIMESTAMP in nova-iris"
+create_repo "nova-iris" "test-with-branches-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-branches-org1-$TIMESTAMP in nova-iris"
+create_repo "nova-iris" "test-with-issues-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-issues-org1-$TIMESTAMP in nova-iris"
+create_repo "nova-iris" "test-with-actions-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-actions-org1-$TIMESTAMP in nova-iris"
 
 # Create repositories in second organization
-print_status "Creating repositories in $ORG2..."
-create_repo "$ORG2" "test-empty-org2-$TIMESTAMP" "private" || print_warning "Failed to create test-empty-org2-$TIMESTAMP in $ORG2"
-create_repo "$ORG2" "test-public-org2-$TIMESTAMP" "public" || print_warning "Failed to create test-public-org2-$TIMESTAMP in $ORG2"
-create_repo "$ORG2" "test-private-org2-$TIMESTAMP" "private" || print_warning "Failed to create test-private-org2-$TIMESTAMP in $ORG2"
+print_status "Creating repositories in baohtruong..."
+create_repo "baohtruong" "test-empty-org2-$TIMESTAMP" "private" || print_warning "Failed to create test-empty-org2-$TIMESTAMP in baohtruong"
+create_repo "baohtruong" "test-public-org2-$TIMESTAMP" "public" || print_warning "Failed to create test-public-org2-$TIMESTAMP in baohtruong"
+create_repo "baohtruong" "test-private-org2-$TIMESTAMP" "private" || print_warning "Failed to create test-private-org2-$TIMESTAMP in baohtruong"
 
 print_status "Test repositories setup completed."
 print_status "==============================================================="
 print_status "IMPORTANT: The following values are being used:"
 echo ""
-echo "TEST_ORG_1 = \"$ORG1\"  # First organization"
-echo "TEST_ORG_2 = \"$ORG2\"  # Second organization"
+echo "TEST_ORG_1 = \"nova-iris\"  # First organization"
+echo "TEST_ORG_2 = \"baohtruong\"  # Second organization"
 echo "TEST_USER = \"$GITHUB_USERNAME\"  # Your GitHub username"
 echo "TEST_REPO_SUFFIX = \"$TIMESTAMP\"  # Timestamp suffix for unique repo names"
 echo ""
@@ -343,8 +343,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_status "Existing .env file backed up."
         
         # Update the values in .env file
-        sed -i "s/^TEST_ORG_1=.*/TEST_ORG_1=$ORG1/" .env
-        sed -i "s/^TEST_ORG_2=.*/TEST_ORG_2=$ORG2/" .env
+        sed -i "s/^TEST_ORG_1=.*/TEST_ORG_1=nova-iris/" .env
+        sed -i "s/^TEST_ORG_2=.*/TEST_ORG_2=baohtruong/" .env
         sed -i "s/^TEST_USER=.*/TEST_USER=$GITHUB_USERNAME/" .env
         
         # Add or update the TEST_REPO_SUFFIX in .env
@@ -357,8 +357,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         # Create new .env file from template if it exists
         if [ -f ".env.template" ]; then
             cp .env.template .env
-            sed -i "s/^TEST_ORG_1=.*/TEST_ORG_1=$ORG1/" .env
-            sed -i "s/^TEST_ORG_2=.*/TEST_ORG_2=$ORG2/" .env
+            sed -i "s/^TEST_ORG_1=.*/TEST_ORG_1=nova-iris/" .env
+            sed -i "s/^TEST_ORG_2=.*/TEST_ORG_2=baohtruong/" .env
             sed -i "s/^TEST_USER=.*/TEST_USER=$GITHUB_USERNAME/" .env
             sed -i "s/^GITHUB_TOKEN=.*/GITHUB_TOKEN=$GITHUB_TOKEN/" .env
         else
@@ -366,8 +366,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
             cat > ".env" << EOF
 # GitHub Repository Transfer Tool - Environment Configuration
 GITHUB_TOKEN=$GITHUB_TOKEN
-TEST_ORG_1=$ORG1
-TEST_ORG_2=$ORG2
+TEST_ORG_1=nova-iris
+TEST_ORG_2=baohtruong
 TEST_USER=$GITHUB_USERNAME
 TEST_REPO_SUFFIX=$TIMESTAMP
 TEST_REPO=test-public-org1-$TIMESTAMP
@@ -393,12 +393,15 @@ fi
 # Create the CSV file
 cat > "$SAMPLE_CSV" << EOF
 source_org,repo_name,dest_org
-$ORG1,test-empty-org1-$TIMESTAMP,$ORG2
-$ORG1,test-public-org1-$TIMESTAMP,$ORG2
-$ORG1,test-private-org1-$TIMESTAMP,$ORG2
-$ORG2,test-empty-org2-$TIMESTAMP,$ORG1
-$ORG2,test-public-org2-$TIMESTAMP,$ORG1
-$ORG2,test-private-org2-$TIMESTAMP,$ORG1
+nova-iris,test-empty-org1-$TIMESTAMP,baohtruong
+nova-iris,test-public-org1-$TIMESTAMP,baohtruong
+nova-iris,test-private-org1-$TIMESTAMP,baohtruong
+nova-iris,test-with-branches-org1-$TIMESTAMP,baohtruong
+nova-iris,test-with-issues-org1-$TIMESTAMP,baohtruong
+nova-iris,test-with-actions-org1-$TIMESTAMP,baohtruong
+baohtruong,test-empty-org2-$TIMESTAMP,nova-iris
+baohtruong,test-public-org2-$TIMESTAMP,nova-iris
+baohtruong,test-private-org2-$TIMESTAMP,nova-iris
 EOF
 
 print_status "Sample CSV file created: $SAMPLE_CSV"
