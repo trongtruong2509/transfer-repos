@@ -17,6 +17,7 @@ if [ -f ".env" ]; then
     export TEST_ORG_2
     export TEST_USER
     export TEST_REPO
+    export TEST_REPO_SUFFIX
 else
     echo "No .env file found. You might need to create one from the template:"
     echo "cp .env.template .env && nano .env"

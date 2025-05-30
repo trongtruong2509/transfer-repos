@@ -34,21 +34,22 @@ class GitHubRepoTransfer:
         self.dry_run = dry_run
         self.user_login = None  # Will store the authenticated user's login
         self._validation_done = False  # Flag to avoid redundant validation
-        
+
         # Create logs directory if it doesn't exist
         logs_dir = Path("logs")
         logs_dir.mkdir(exist_ok=True)
-        
+
         # Generate a unique log filename with timestamp and dry-run indicator
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         dry_run_suffix = "_dry_run" if dry_run else ""
         log_filename = f"repo_transfer_{timestamp}{dry_run_suffix}.log"
         log_path = logs_dir / log_filename
-        
+
         # Setup logging with colored console output
-        self.logger = logging.getLogger("RepoTransfer")
+        self.logger = logging.getLogger(f"RepoTransfer_{timestamp}{dry_run_suffix}")
         log_level = logging.DEBUG if debug else logging.INFO
-        
+        self.logger.setLevel(log_level)
+
         # Define color codes for console output
         class ColoredFormatter(logging.Formatter):
             """Custom formatter to add colors to log levels in console output."""
@@ -76,27 +77,30 @@ class GitHubRepoTransfer:
                     log_message = log_message.replace("WARNING", f"{self.COLORS['WARNING']}WARNING{self.COLORS['RESET']}")
                 
                 return log_message
-        
+
         # Create console handler with colored output
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(ColoredFormatter(
             '%(asctime)s - %(levelname)s - %(message)s',
             '%Y-%m-%d %H:%M:%S'
         ))
-        
+        console_handler.setLevel(log_level)
+
         # Create file handler with regular formatting (no colors in log files)
         file_handler = logging.FileHandler(log_path)
         file_handler.setFormatter(logging.Formatter(
             '%(asctime)s - %(levelname)s - %(message)s',
             '%Y-%m-%d %H:%M:%S'
         ))
-        
-        # Configure logging
-        logging.basicConfig(
-            level=log_level,
-            handlers=[console_handler, file_handler]
-        )
-        
+        file_handler.setLevel(log_level)
+
+        # Remove all handlers if already set (avoid duplicate logs)
+        if self.logger.hasHandlers():
+            self.logger.handlers.clear()
+        self.logger.addHandler(console_handler)
+        self.logger.addHandler(file_handler)
+        self.logger.propagate = False
+
         # Define green color code for headers
         GREEN = '\033[92m'  # Bright green
         RESET = '\033[0m'   # Reset to default
@@ -264,17 +268,17 @@ class GitHubRepoTransfer:
             
             self._log_step(1, 1, f"Sending transfer request for {source_org}/{repo_name}...")
             response = self.session.post(url, json=data)
+            self.logger.debug(f"Transfer API response: {response.status_code} {response.text}")
             
-            if response.status_code in [202, 200]:  # 202 Accepted is the expected response
-                self._log_step_result(True, f"Repository transfer initiated successfully", 
-                                    f"{source_org}/{repo_name} → {dest_org}")
+            if response.status_code == 202:
+                self._log_step_result(True, f"Repository transfer initiated successfully")
                 return True
             else:
-                self._log_step_result(False, f"Repository transfer failed", 
-                                    f"API returned {response.status_code}: {response.text}")
+                self._log_step_result(False, f"Repository transfer failed", f"GitHub API returned {response.status_code}: {response.text}")
+                self.logger.error(f"Transfer failed: {response.status_code} {response.text}")
                 return False
         except Exception as e:
-            self._log_step_result(False, f"Repository transfer error", str(e))
+            self.logger.error(f"Exception during transfer_repository API call: {e}", exc_info=True)
             return False
             
     def _log_section_header(self, title: str) -> None:
@@ -329,7 +333,6 @@ class GitHubRepoTransfer:
         """Process a single repository transfer with full validation."""
         self._log_section_header(f"Starting GitHub token and organization validation...")
         self.logger.info(f"Processing transfer request: {source_org}/{repo_name} to {dest_org}")
-        
         # Step 1: Validate token
         self._log_step(1, 3, "Testing GitHub API connection...")
         if not self.validate_token():
@@ -339,13 +342,13 @@ class GitHubRepoTransfer:
             return False
         else:
             self._log_step_result(True, f"GitHub API connection successful (authenticated as: {self.user_login})")
-        
         # Step 2: Validate source organization
         self._log_step(2, 3, f"Validating access to source organization '{source_org}'...")
         source_org_valid = self.validate_org_access(source_org)
         if not source_org_valid:
             self._log_step_result(False, f"Failed to access source organization '{source_org}'", 
                                 "Organization not found, user not a member, or insufficient permissions")
+            self.logger.error(f"Source org validation failed for {source_org}")
             if not self.dry_run:
                 self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
                 return False
@@ -353,13 +356,13 @@ class GitHubRepoTransfer:
                 self._log_warning(f"Continuing in DRY RUN mode despite source org validation failure")
         else:
             self._log_step_result(True, f"Access to source organization '{source_org}' confirmed")
-            
         # Step 3: Validate destination organization
         self._log_step(3, 3, f"Validating access to destination organization '{dest_org}'...")
         dest_org_valid = self.validate_org_access(dest_org)
         if not dest_org_valid:
             self._log_step_result(False, f"Failed to access destination organization '{dest_org}'", 
                                 "Organization not found, user not a member, or insufficient permissions")
+            self.logger.error(f"Destination org validation failed for {dest_org}")
             if not self.dry_run:
                 self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
                 return False
@@ -367,7 +370,7 @@ class GitHubRepoTransfer:
                 self._log_warning(f"Continuing in DRY RUN mode despite destination org validation failure")
         else:
             self._log_step_result(True, f"Access to destination organization '{dest_org}' confirmed")
-            
+        
         # Determine overall validation status
         all_valid = self.user_login and source_org_valid and dest_org_valid
         
@@ -385,7 +388,11 @@ class GitHubRepoTransfer:
         
         # Process the transfer
         self._log_section_header(f"STARTING REPOSITORY TRANSFER")
-        result = self.transfer_repository(source_org, repo_name, dest_org)
+        try:
+            result = self.transfer_repository(source_org, repo_name, dest_org)
+        except Exception as e:
+            self.logger.error(f"Exception during transfer_repository: {e}", exc_info=True)
+            result = False
         self._validation_done = False  # Reset flag
         
         if result:

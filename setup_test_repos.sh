@@ -304,20 +304,24 @@ EOF
     return 0
 }
 
+# Generate a timestamp suffix for uniqueness
+TIMESTAMP=$(date +%Y%m%d%H%M%S)
+print_status "Using timestamp suffix for unique repositories: $TIMESTAMP"
+
 # Create repositories in first organization
 print_status "Creating repositories in $ORG1..."
-create_repo "$ORG1" "test-empty" "private" || print_warning "Failed to create test-empty in $ORG1"
-create_repo "$ORG1" "test-public" "public" || print_warning "Failed to create test-public in $ORG1"
-create_repo "$ORG1" "test-private" "private" || print_warning "Failed to create test-private in $ORG1"
-create_repo "$ORG1" "test-with-branches" "private" || print_warning "Failed to create test-with-branches in $ORG1"
-create_repo "$ORG1" "test-with-issues" "private" || print_warning "Failed to create test-with-issues in $ORG1"
-create_repo "$ORG1" "test-with-actions" "private" || print_warning "Failed to create test-with-actions in $ORG1"
+create_repo "$ORG1" "test-empty-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-empty-org1-$TIMESTAMP in $ORG1"
+create_repo "$ORG1" "test-public-org1-$TIMESTAMP" "public" || print_warning "Failed to create test-public-org1-$TIMESTAMP in $ORG1"
+create_repo "$ORG1" "test-private-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-private-org1-$TIMESTAMP in $ORG1"
+create_repo "$ORG1" "test-with-branches-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-branches-org1-$TIMESTAMP in $ORG1"
+create_repo "$ORG1" "test-with-issues-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-issues-org1-$TIMESTAMP in $ORG1"
+create_repo "$ORG1" "test-with-actions-org1-$TIMESTAMP" "private" || print_warning "Failed to create test-with-actions-org1-$TIMESTAMP in $ORG1"
 
 # Create repositories in second organization
 print_status "Creating repositories in $ORG2..."
-create_repo "$ORG2" "test-empty" "private" || print_warning "Failed to create test-empty in $ORG2"
-create_repo "$ORG2" "test-public" "public" || print_warning "Failed to create test-public in $ORG2"
-create_repo "$ORG2" "test-private" "private" || print_warning "Failed to create test-private in $ORG2"
+create_repo "$ORG2" "test-empty-org2-$TIMESTAMP" "private" || print_warning "Failed to create test-empty-org2-$TIMESTAMP in $ORG2"
+create_repo "$ORG2" "test-public-org2-$TIMESTAMP" "public" || print_warning "Failed to create test-public-org2-$TIMESTAMP in $ORG2"
+create_repo "$ORG2" "test-private-org2-$TIMESTAMP" "private" || print_warning "Failed to create test-private-org2-$TIMESTAMP in $ORG2"
 
 print_status "Test repositories setup completed."
 print_status "==============================================================="
@@ -326,6 +330,7 @@ echo ""
 echo "TEST_ORG_1 = \"$ORG1\"  # First organization"
 echo "TEST_ORG_2 = \"$ORG2\"  # Second organization"
 echo "TEST_USER = \"$GITHUB_USERNAME\"  # Your GitHub username"
+echo "TEST_REPO_SUFFIX = \"$TIMESTAMP\"  # Timestamp suffix for unique repo names"
 echo ""
 
 # Ask if the user wants to update the .env file
@@ -341,6 +346,13 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         sed -i "s/^TEST_ORG_1=.*/TEST_ORG_1=$ORG1/" .env
         sed -i "s/^TEST_ORG_2=.*/TEST_ORG_2=$ORG2/" .env
         sed -i "s/^TEST_USER=.*/TEST_USER=$GITHUB_USERNAME/" .env
+        
+        # Add or update the TEST_REPO_SUFFIX in .env
+        if grep -q "^TEST_REPO_SUFFIX=" .env; then
+            sed -i "s/^TEST_REPO_SUFFIX=.*/TEST_REPO_SUFFIX=$TIMESTAMP/" .env
+        else
+            echo "TEST_REPO_SUFFIX=$TIMESTAMP" >> .env
+        fi
     else
         # Create new .env file from template if it exists
         if [ -f ".env.template" ]; then
@@ -357,7 +369,8 @@ GITHUB_TOKEN=$GITHUB_TOKEN
 TEST_ORG_1=$ORG1
 TEST_ORG_2=$ORG2
 TEST_USER=$GITHUB_USERNAME
-TEST_REPO=example-repo-2
+TEST_REPO_SUFFIX=$TIMESTAMP
+TEST_REPO=test-public-org1-$TIMESTAMP
 EOF
         fi
     fi
@@ -380,12 +393,12 @@ fi
 # Create the CSV file
 cat > "$SAMPLE_CSV" << EOF
 source_org,repo_name,dest_org
-$ORG1,test-empty,$ORG2
-$ORG1,test-public,$ORG2
-$ORG1,test-private,$ORG2
-$ORG2,test-empty,$ORG1
-$ORG2,test-public,$ORG1
-$ORG2,test-private,$ORG1
+$ORG1,test-empty-org1-$TIMESTAMP,$ORG2
+$ORG1,test-public-org1-$TIMESTAMP,$ORG2
+$ORG1,test-private-org1-$TIMESTAMP,$ORG2
+$ORG2,test-empty-org2-$TIMESTAMP,$ORG1
+$ORG2,test-public-org2-$TIMESTAMP,$ORG1
+$ORG2,test-private-org2-$TIMESTAMP,$ORG1
 EOF
 
 print_status "Sample CSV file created: $SAMPLE_CSV"

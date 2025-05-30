@@ -13,7 +13,8 @@ import sys
 TEST_ORG_1 = os.environ.get("TEST_ORG_1", "nova-iris")
 TEST_ORG_2 = os.environ.get("TEST_ORG_2", "baohtruong")
 TEST_USER = os.environ.get("TEST_USER", "trongtruong2509")
-TEST_REPO = os.environ.get("TEST_REPO", "example-repo-2")
+TEST_REPO_SUFFIX = os.environ.get("TEST_REPO_SUFFIX", "")
+TEST_REPO = os.environ.get("TEST_REPO", f"test-public-org1-{TEST_REPO_SUFFIX}" if TEST_REPO_SUFFIX else "example-repo-2")
 
 # Skip all logging tests by default
 def pytest_collection_modifyitems(items):
@@ -154,10 +155,13 @@ def mock_membership_not_found_response():
 @pytest.fixture
 def sample_csv_path(tmp_path):
     """Create a sample CSV file for testing."""
+    repo_suffix = os.environ.get("TEST_REPO_SUFFIX", "")
+    suffix_text = f"-org1-{repo_suffix}" if repo_suffix else ""
+    
     csv_content = "source_org,repo_name,dest_org\n"
-    csv_content += f"{TEST_ORG_1},repo-1,{TEST_ORG_2}\n"
-    csv_content += f"{TEST_ORG_1},repo-2,{TEST_ORG_2}\n"
-    csv_content += f"{TEST_ORG_2},repo-3,{TEST_ORG_1}\n"
+    csv_content += f"{TEST_ORG_1},test-repo{suffix_text},{TEST_ORG_2}\n"
+    csv_content += f"{TEST_ORG_1},example-repo{suffix_text},{TEST_ORG_2}\n"
+    csv_content += f"{TEST_ORG_2},sample-repo-org2-{repo_suffix if repo_suffix else ''}',{TEST_ORG_1}\n"
     csv_content += f"nonexistent-org,repo-4,{TEST_ORG_2}\n"
     csv_content += f"{TEST_ORG_1},nonexistent-repo,{TEST_ORG_2}\n"
     
@@ -185,9 +189,9 @@ def empty_csv_path(tmp_path):
     return str(csv_file)
 
 # Disable actual logging during tests
-@pytest.fixture(autouse=True)
-def disable_logging():
-    """Disable logging during tests."""
-    logging.disable(logging.CRITICAL)
-    yield
-    logging.disable(logging.NOTSET)
+# @pytest.fixture(autouse=True)
+# def disable_logging():
+#     """Disable logging during tests."""
+#     logging.disable(logging.CRITICAL)
+#     yield
+#     logging.disable(logging.NOTSET)

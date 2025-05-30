@@ -23,7 +23,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from repo_transfer import GitHubRepoTransfer
-from test.conftest import TEST_ORG_1, TEST_ORG_2, TEST_USER
+from test.conftest import TEST_ORG_1, TEST_ORG_2, TEST_USER, TEST_REPO_SUFFIX
 
 # Check if we should run real execution tests
 RUN_REAL_EXECUTION = os.environ.get("GITHUB_TEST_REAL_EXECUTION") == "1"
@@ -86,9 +86,9 @@ def temp_csv_file(tmp_path_factory):
     with open(csv_path, "w") as f:
         writer = csv.writer(f)
         writer.writerow(["source_org", "repo_name", "dest_org"])
-        writer.writerow([TEST_ORG_1, "test-with-branches", TEST_ORG_2])
-        writer.writerow([TEST_ORG_1, "test-with-issues", TEST_ORG_2])
-        writer.writerow([TEST_ORG_1, "test-with-actions", TEST_ORG_2])
+        writer.writerow([TEST_ORG_1, f"test-with-branches-org1-{TEST_REPO_SUFFIX}", TEST_ORG_2])
+        writer.writerow([TEST_ORG_1, f"test-with-issues-org1-{TEST_REPO_SUFFIX}", TEST_ORG_2])
+        writer.writerow([TEST_ORG_1, f"test-with-actions-org1-{TEST_REPO_SUFFIX}", TEST_ORG_2])
     
     return str(csv_path)
 
@@ -105,102 +105,127 @@ class TestRealExecution:
         # Create the transfer instance - NOT in dry run mode
         transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
         
+        # Use the unique repository name with timestamp suffix
+        repo_name = f"test-empty-org1-{TEST_REPO_SUFFIX}"
+        
         # Transfer a repository from org1 to org2
-        result = transfer.process_single_transfer(TEST_ORG_1, "test-empty", TEST_ORG_2)
+        result = transfer.process_single_transfer(TEST_ORG_1, repo_name, TEST_ORG_2)
         assert result is True
         
         # Verify the repository was transferred by checking access
         # We need to wait a bit for the transfer to complete
         time.sleep(5)
-        assert transfer.validate_repo_access(TEST_ORG_2, "test-empty") is True
+        assert transfer.validate_repo_access(TEST_ORG_2, repo_name) is True
         
         # Transfer it back to restore the initial state
-        transfer.process_single_transfer(TEST_ORG_2, "test-empty", TEST_ORG_1)
+        transfer.process_single_transfer(TEST_ORG_2, repo_name, TEST_ORG_1)
         time.sleep(5)
     
     def test_real_public_repo_transfer(self, github_token, setup_test_repos):
         """Test transferring a public repository for real."""
         transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
         
+        # Use the unique repository name with timestamp suffix
+        repo_name = f"test-public-org1-{TEST_REPO_SUFFIX}"
+        
         # Transfer a public repository from org1 to org2
-        result = transfer.process_single_transfer(TEST_ORG_1, "test-public", TEST_ORG_2)
+        result = transfer.process_single_transfer(TEST_ORG_1, repo_name, TEST_ORG_2)
         assert result is True
         
         # Verify the repository was transferred
         time.sleep(5)
-        assert transfer.validate_repo_access(TEST_ORG_2, "test-public") is True
+        assert transfer.validate_repo_access(TEST_ORG_2, repo_name) is True
         
         # Transfer it back
-        transfer.process_single_transfer(TEST_ORG_2, "test-public", TEST_ORG_1)
+        transfer.process_single_transfer(TEST_ORG_2, repo_name, TEST_ORG_1)
         time.sleep(5)
     
     def test_real_private_repo_transfer(self, github_token, setup_test_repos):
         """Test transferring a private repository for real."""
         transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
         
+        # Use the unique repository name with timestamp suffix
+        repo_name = f"test-private-org1-{TEST_REPO_SUFFIX}"
+        
         # Transfer a private repository from org1 to org2
-        result = transfer.process_single_transfer(TEST_ORG_1, "test-private", TEST_ORG_2)
+        result = transfer.process_single_transfer(TEST_ORG_1, repo_name, TEST_ORG_2)
         assert result is True
         
         # Verify the repository was transferred
         time.sleep(5)
-        assert transfer.validate_repo_access(TEST_ORG_2, "test-private") is True
+        assert transfer.validate_repo_access(TEST_ORG_2, repo_name) is True
         
         # Transfer it back
-        transfer.process_single_transfer(TEST_ORG_2, "test-private", TEST_ORG_1)
+        transfer.process_single_transfer(TEST_ORG_2, repo_name, TEST_ORG_1)
         time.sleep(5)
     
     def test_real_repo_with_branches_transfer(self, github_token, setup_test_repos):
         """Test transferring a repository with multiple branches."""
         transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
         
+        # Use the unique repository name with timestamp suffix
+        repo_name = f"test-with-branches-org1-{TEST_REPO_SUFFIX}"
+        
         # Transfer repository with branches from org1 to org2
-        result = transfer.process_single_transfer(TEST_ORG_1, "test-with-branches", TEST_ORG_2)
+        result = transfer.process_single_transfer(TEST_ORG_1, repo_name, TEST_ORG_2)
         assert result is True
         
         # Verify the repository was transferred
         time.sleep(5)
-        assert transfer.validate_repo_access(TEST_ORG_2, "test-with-branches") is True
+        assert transfer.validate_repo_access(TEST_ORG_2, repo_name) is True
         
         # Transfer it back
-        transfer.process_single_transfer(TEST_ORG_2, "test-with-branches", TEST_ORG_1)
+        transfer.process_single_transfer(TEST_ORG_2, repo_name, TEST_ORG_1)
         time.sleep(5)
     
     def test_real_repo_with_issues_transfer(self, github_token, setup_test_repos):
         """Test transferring a repository with issues."""
         transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
         
+        # Use the unique repository name with timestamp suffix
+        repo_name = f"test-with-issues-org1-{TEST_REPO_SUFFIX}"
+        
         # Transfer repository with issues from org1 to org2
-        result = transfer.process_single_transfer(TEST_ORG_1, "test-with-issues", TEST_ORG_2)
+        result = transfer.process_single_transfer(TEST_ORG_1, repo_name, TEST_ORG_2)
         assert result is True
         
         # Verify the repository was transferred
         time.sleep(5)
-        assert transfer.validate_repo_access(TEST_ORG_2, "test-with-issues") is True
+        assert transfer.validate_repo_access(TEST_ORG_2, repo_name) is True
         
         # Transfer it back
-        transfer.process_single_transfer(TEST_ORG_2, "test-with-issues", TEST_ORG_1)
+        transfer.process_single_transfer(TEST_ORG_2, repo_name, TEST_ORG_1)
         time.sleep(5)
     
     def test_real_repo_with_actions_transfer(self, github_token, setup_test_repos):
         """Test transferring a repository with GitHub Actions."""
         transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
         
+        # Use the unique repository name with timestamp suffix
+        repo_name = f"test-with-actions-org1-{TEST_REPO_SUFFIX}"
+        
         # Transfer repository with GitHub Actions from org1 to org2
-        result = transfer.process_single_transfer(TEST_ORG_1, "test-with-actions", TEST_ORG_2)
+        result = transfer.process_single_transfer(TEST_ORG_1, repo_name, TEST_ORG_2)
         assert result is True
         
         # Verify the repository was transferred
         time.sleep(5)
-        assert transfer.validate_repo_access(TEST_ORG_2, "test-with-actions") is True
+        assert transfer.validate_repo_access(TEST_ORG_2, repo_name) is True
         
         # Transfer it back
-        transfer.process_single_transfer(TEST_ORG_2, "test-with-actions", TEST_ORG_1)
+        transfer.process_single_transfer(TEST_ORG_2, repo_name, TEST_ORG_1)
         time.sleep(5)
     
     def test_real_csv_batch_transfer(self, github_token, setup_test_repos, temp_csv_file):
         """Test transferring multiple repositories using a CSV file."""
         transfer = GitHubRepoTransfer(token=github_token, debug=True, dry_run=False)
+        
+        # Create a list of repositories with unique names
+        repo_names = [
+            f"test-with-branches-org1-{TEST_REPO_SUFFIX}",
+            f"test-with-issues-org1-{TEST_REPO_SUFFIX}",
+            f"test-with-actions-org1-{TEST_REPO_SUFFIX}"
+        ]
         
         # Process the CSV file
         successful, total = transfer.process_csv_file(temp_csv_file)
@@ -213,7 +238,7 @@ class TestRealExecution:
         time.sleep(10)
         
         # Verify the repositories were transferred
-        for repo_name in ["test-with-branches", "test-with-issues", "test-with-actions"]:
+        for repo_name in repo_names:
             assert transfer.validate_repo_access(TEST_ORG_2, repo_name) is True
         
         # Create a CSV to transfer repositories back
@@ -221,9 +246,8 @@ class TestRealExecution:
         with open(reverse_csv_path, "w") as f:
             writer = csv.writer(f)
             writer.writerow(["source_org", "repo_name", "dest_org"])
-            writer.writerow([TEST_ORG_2, "test-with-branches", TEST_ORG_1])
-            writer.writerow([TEST_ORG_2, "test-with-issues", TEST_ORG_1])
-            writer.writerow([TEST_ORG_2, "test-with-actions", TEST_ORG_1])
+            for repo_name in repo_names:
+                writer.writerow([TEST_ORG_2, repo_name, TEST_ORG_1])
         
         # Transfer them back
         successful, total = transfer.process_csv_file(str(reverse_csv_path))
@@ -234,7 +258,7 @@ class TestRealExecution:
         time.sleep(10)
         
         # Verify they were transferred back
-        for repo_name in ["test-with-branches", "test-with-issues", "test-with-actions"]:
+        for repo_name in repo_names:
             assert transfer.validate_repo_access(TEST_ORG_1, repo_name) is True
 
     def test_real_error_handling_nonexistent_repo(self, github_token):

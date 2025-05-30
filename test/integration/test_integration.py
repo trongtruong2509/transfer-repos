@@ -16,7 +16,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from repo_transfer import GitHubRepoTransfer, main
-from test.conftest import TEST_ORG_1, TEST_ORG_2, TEST_REPO, TEST_USER
+from test.conftest import TEST_ORG_1, TEST_ORG_2, TEST_REPO, TEST_USER, TEST_REPO_SUFFIX
 
 # Determine if we should run real integration tests or use mocks
 RUN_REAL_INTEGRATION = os.environ.get("GITHUB_TEST_INTEGRATION") == "1"

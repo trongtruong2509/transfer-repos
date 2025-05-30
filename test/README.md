@@ -52,27 +52,6 @@ pytest test/unit/test_authentication.py::TestAuthentication::test_valid_token -v
 
 # Run tests with a specific marker
 pytest -m "not integration" -v
-
-# Run only real execution tests that perform actual transfers
-pytest test/real_execution -v
-```
-
-### Running Tests with Shortcuts
-
-The `run_tests.sh` script provides shortcuts for running different test suites:
-
-```bash
-# Run standard tests (skipping real tests)
-./run_tests.sh
-
-# Run full tests including real integration tests
-./run_tests.sh -f
-
-# Run only real execution tests
-./run_tests.sh -r
-
-# Run only real execution tests with dedicated script
-./run_real_tests.sh
 ```
 
 ## Setting Up Test Repositories
@@ -92,9 +71,6 @@ For real integration tests, you need to set the following environment variables:
 ```bash
 # Set to 1 to run real integration tests against GitHub API
 export GITHUB_TEST_INTEGRATION=1
-
-# Set to 1 to run real execution tests that perform actual transfers
-export GITHUB_TEST_REAL_EXECUTION=1
 
 # Different tokens for testing various permission levels
 export GITHUB_TOKEN_ADMIN=your_admin_token
