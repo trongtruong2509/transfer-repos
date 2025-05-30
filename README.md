@@ -20,124 +20,18 @@ A Python-based tool to automate validation and transfer of repositories between 
 - Required Python packages:
   - requests
 
-## Environment Configuration
+## Installation
 
-The tool uses environment variables for configuration. You can:
-
-1. Create a `.env` file from the template:
+1. Clone this repository:
    ```bash
-   cp .env.template .env
-   nano .env  # Edit with your values
+   git clone https://github.com/your-username/github-repo-transfer.git
+   cd github-repo-transfer
    ```
 
-2. Run the setup script to automatically configure settings:
+2. Install the required packages:
    ```bash
-   ./setup_test_repos.sh
+   pip install -r requirements.txt
    ```
-
-3. Set environment variables manually:
-   ```bash
-   export GITHUB_TOKEN=your_github_token
-   ```
-
-For more details, see [Environment Configuration](ENV_CONFIG.md).
-
-## Testing
-
-The tool includes a comprehensive test suite with 45+ test cases covering all aspects of functionality:
-
-### Running Tests
-
-You can run all tests and generate HTML reports using the provided script:
-
-```bash
-# Run standard tests (skipping real tests)
-./run_tests.sh
-
-# Run full tests including real integration tests
-./run_tests.sh -f
-
-# Run only real execution tests
-./run_tests.sh -r
-
-# Run full tests and real execution tests
-./run_tests.sh -f -r
-```
-
-This will:
-1. Create a virtual environment if needed
-2. Install required packages for testing
-3. Run all tests with code coverage
-4. Generate HTML reports in the `test_results` directory
-
-The script has been enhanced to work on various Linux distributions, including Debian/Ubuntu systems.
-
-#### Running Real Execution Tests
-
-The tool includes tests that perform actual repository transfers to verify functionality:
-
-```bash
-# Run only real execution tests
-./run_tests.sh -r
-
-# Alternative dedicated script for real execution tests
-./run_real_tests.sh
-```
-
-**Note:** Real execution tests require:
-1. A GitHub token with admin access to both test organizations
-2. Test repositories created by running `setup_test_repos.sh`
-3. Updated organization names in `test/conftest.py`
-
-### Test Structure
-
-- **Unit Tests**: Test individual components in isolation
-  - Authentication
-  - Organization validation
-  - Repository validation
-  - Transfer functionality
-  - CSV processing
-  - Logging
-
-- **Integration Tests**: Test the tool end-to-end
-
-### Setting Up Test Environment
-
-Before running integration tests with real GitHub API:
-
-1. Set up test repositories using the enhanced setup script:
-   ```bash
-   ./setup_test_repos.sh your-org-1 your-org-2
-   ```
-   
-   This script will:
-   - Create test repositories with various configurations:
-     - Empty repositories
-     - Public and private repositories
-     - Repositories with multiple branches
-     - Repositories with issues
-     - Repositories with GitHub Actions workflows
-   - Generate a sample CSV file for batch transfer testing
-   - Provide configuration settings for `conftest.py`
-
-2. Update `test/conftest.py` with your organization names and GitHub username:
-   ```python
-   TEST_ORG_1 = "your-org-1"  # First organization
-   TEST_ORG_2 = "your-org-2"  # Second organization
-   TEST_USER = "your-username"  # Your GitHub username
-   ```
-
-3. Set environment variables for different token permission levels:
-   ```bash
-   export GITHUB_TEST_INTEGRATION=1
-   export GITHUB_TOKEN_ADMIN=your_admin_token
-   export GITHUB_TOKEN_MEMBER=your_member_token
-   export GITHUB_TOKEN_READONLY=your_readonly_token
-   export GITHUB_TOKEN_ORG1=your_org1_only_token
-   export GITHUB_TOKEN_ORG2=your_org2_only_token
-   ```
-
-For more details, see [test/README.md](test/README.md).
 
 ## Usage
 
@@ -183,9 +77,90 @@ org1,repo2,org3
 - `--dry-run`: Simulate the transfer process without actually transferring repos
 - `-v, --verbose`: Enable verbose debug logging
 
+### Example Usage
+
+1. Transfer a single repository:
+   ```bash
+   python repo_transfer.py --source-org my-source-org --repo-name my-repo --dest-org my-dest-org
+   ```
+
+2. Transfer multiple repositories using a CSV file:
+   ```bash
+   python repo_transfer.py --csv sample_repos.csv
+   ```
+
+3. Perform a dry run (no actual transfers):
+   ```bash
+   python repo_transfer.py --source-org my-source-org --repo-name my-repo --dest-org my-dest-org --dry-run
+   ```
+
+4. Enable verbose logging:
+   ```bash
+   python repo_transfer.py --source-org my-source-org --repo-name my-repo --dest-org my-dest-org -v
+   ```
+
+## Environment Configuration
+
+The tool uses environment variables for configuration. You can:
+
+1. Create a `.env` file from the template:
+   ```bash
+   cp .env.template .env
+   nano .env  # Edit with your values
+   ```
+
+2. Set environment variables manually:
+   ```bash
+   export GITHUB_TOKEN=your_github_token
+   ```
+
+The only required environment variable for basic usage is:
+- `GITHUB_TOKEN`: Your GitHub Personal Access Token with permissions to access and transfer repositories
+
 ## Logging
 
 The tool logs all operations to both the console and individual log files in the `logs` directory. Each run creates a new log file with a timestamp (e.g., `logs/repo_transfer_20250529_165122.log`), making it easy to track different transfer sessions.
+
+## Testing
+
+The tool includes a comprehensive test suite with 45+ test cases covering all aspects of functionality.
+
+### Setting Up the Testing Environment
+
+1. Create and configure your testing environment:
+   ```bash
+   # Copy the template environment file
+   cp .env.template .env
+   
+   # Edit the file to set your testing values
+   nano .env
+   ```
+
+2. Set up test repositories using the provided script:
+   ```bash
+   # Set up test repositories in your GitHub organizations
+   ./setup_test_repos.sh your-org-1 your-org-2
+   ```
+   
+   This script will:
+   - Create test repositories with various configurations in both organizations
+   - Generate a timestamp suffix for unique repository names
+   - Update your .env file with the correct values
+   - Create a sample CSV file for batch transfer testing
+
+3. Running tests:
+   ```bash
+   # Run standard tests (skipping real tests)
+   ./run_tests.sh
+   
+   # Run full tests including real integration tests
+   ./run_tests.sh -f
+   
+   # Run only real execution tests
+   ./run_tests.sh -r
+   ```
+
+For detailed information about running tests, test structure, and available test options, see [test/README.md](test/README.md).
 
 ## License
 
