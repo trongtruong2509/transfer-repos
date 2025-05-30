@@ -1,8 +1,10 @@
 source_org,repo_name,dest_org
-nova-iris,test-empty-org1-20250530,baohtruong
-nova-iris,test-private-org1-20250530,baohtruong
-nova-iris,test-with-branches-org1-20250530,baohtruong
-nova-iris,test-with-issues-org1-20250530,baohtruong
-baohtruong,test-empty-org2-20250530,nova-iris
-baohtruong,test-public-org2-20250530,nova-iris
-baohtruong,test-public-org2-20250530,nova-iris
+nova-iris,test-empty-org1-20250531,baohtruong
+nova-iris,test-public-org1-20250531,baohtruong
+nova-iris,test-private-org1-20250531,baohtruong
+nova-iris,test-with-branches-org1-20250531,baohtruong
+nova-iris,test-with-issues-org1-20250531,baohtruong
+nova-iris,test-with-actions-org1-20250531,baohtruong
+baohtruong,test-empty-org2-20250531,nova-iris
+baohtruong,test-public-org2-20250531,nova-iris
+baohtruong,test-private-org2-20250531,nova-iris

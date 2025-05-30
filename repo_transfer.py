@@ -577,6 +577,7 @@ class GitHubRepoTransfer:
                             self._log_step_result(False, f"Transfer skipped (user declined)", f"{source_org}/{repo_name} → {dest_org}")
                             continue
                     
+                    time.sleep(1)  # Sleep for 1 second
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1
                         self._log_step_result(True, f"Transfer completed", f"{source_org}/{repo_name} → {dest_org}")
