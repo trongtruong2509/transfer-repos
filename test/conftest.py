@@ -7,6 +7,7 @@ import requests
 from unittest.mock import MagicMock, patch
 import logging
 import sys
+import time
 
 # Load constants from environment variables (.env file)
 # These values are loaded in run_tests.sh or can be set manually
@@ -195,3 +196,9 @@ def empty_csv_path(tmp_path):
 #     logging.disable(logging.CRITICAL)
 #     yield
 #     logging.disable(logging.NOTSET)
+
+@pytest.fixture
+def mock_sleep():
+    """Mock the time.sleep function to prevent actual sleeping during tests."""
+    with patch('time.sleep', return_value=None) as mock_sleep:
+        yield mock_sleep

@@ -21,7 +21,7 @@ class TestCSVProcessing:
     @patch.object(GitHubRepoTransfer, 'transfer_repository')
     @patch.object(GitHubRepoTransfer, 'validate_token')
     @patch.object(GitHubRepoTransfer, '_prompt_for_batch_confirmation', return_value=True)
-    def test_valid_csv_processing(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path):
+    def test_valid_csv_processing(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path, mock_sleep):
         """Test processing of a valid CSV file."""
         # Set up successful token validation
         mock_validate_token.return_value = True
@@ -39,6 +39,11 @@ class TestCSVProcessing:
         assert mock_validate_token.call_count == 1
         assert mock_transfer.call_count == 5
         assert mock_batch_confirm.call_count == 1
+        
+        # Verify sleep was called between repositories in non-dry-run mode (one less than total transfers)
+        assert mock_sleep.call_count == 4  # Called for repos 2-5 (not for the first repo)
+        # Check that sleep was called with the right delay value
+        mock_sleep.assert_has_calls([call(15)] * 4)
 
     @patch.object(GitHubRepoTransfer, 'validate_token')
     def test_csv_file_not_found(self, mock_validate_token):
@@ -85,7 +90,7 @@ class TestCSVProcessing:
     @patch.object(GitHubRepoTransfer, 'transfer_repository')
     @patch.object(GitHubRepoTransfer, 'validate_token')
     @patch.object(GitHubRepoTransfer, '_prompt_for_batch_confirmation', return_value=True)
-    def test_csv_processing_with_exception(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path):
+    def test_csv_processing_with_exception(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path, mock_sleep):
         """Test handling of exceptions during CSV processing."""
         # Set up successful token validation
         mock_validate_token.return_value = True
@@ -103,11 +108,15 @@ class TestCSVProcessing:
         assert mock_validate_token.call_count == 1
         assert mock_transfer.call_count == 2
         assert mock_batch_confirm.call_count == 1
+        
+        # Verify sleep was called once (after the first successful transfer)
+        assert mock_sleep.call_count == 1
+        mock_sleep.assert_called_once_with(15)
 
     @patch.object(GitHubRepoTransfer, 'transfer_repository')
     @patch.object(GitHubRepoTransfer, 'validate_token')
     @patch.object(GitHubRepoTransfer, '_prompt_for_batch_confirmation', return_value=True)
-    def test_csv_dry_run(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path):
+    def test_csv_dry_run(self, mock_batch_confirm, mock_validate_token, mock_transfer, sample_csv_path, mock_sleep):
         """Test CSV processing in dry-run mode."""
         # Set up successful token validation
         mock_validate_token.return_value = True
@@ -125,3 +134,6 @@ class TestCSVProcessing:
         assert mock_validate_token.call_count == 1
         assert mock_transfer.call_count == 5
         assert mock_batch_confirm.call_count == 1
+        
+        # Verify sleep was NOT called in dry-run mode
+        assert mock_sleep.call_count == 0

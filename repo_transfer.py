@@ -213,7 +213,7 @@ class GitHubRepoTransfer:
             self.logger.error(f"Repository validation error for {org_name}/{repo_name}: {str(e)}")
             return False
     
-    def transfer_repository(self, source_org: str, repo_name: str, dest_org: str, max_retries: int = 3, retry_delay: int = 60) -> bool:
+    def transfer_repository(self, source_org: str, repo_name: str, dest_org: str, max_retries: int = 3, retry_delay: int = 15) -> bool:
         """
         Transfer a repository from source organization to destination organization.
         
@@ -603,9 +603,9 @@ class GitHubRepoTransfer:
                             continue
                     
                     # Sleep for 30 seconds between transfer attempts to avoid "operation still in progress" errors
-                    if i > 1:  # Only sleep after the first repository
-                        self.logger.info(f"Waiting 30 seconds before next transfer to avoid GitHub API rate limiting...")
-                        time.sleep(30)
+                    if i > 1 and not self.dry_run:  # Only sleep after the first repository and not in dry-run mode
+                        self.logger.info(f"Waiting 15 seconds before next transfer to avoid GitHub API rate limiting...")
+                        time.sleep(15)
                         
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1
