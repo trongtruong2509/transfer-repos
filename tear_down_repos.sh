@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # INPUT_CSV="transfer_repos.csv"
-INPUT_CSV="sample_repos.csv"
+INPUT_CSV="teardown_repos.csv"
 LOG_FILE="delete_repos.log"
 DRY_RUN=false
 
