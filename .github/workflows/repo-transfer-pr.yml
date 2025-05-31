@@ -291,6 +291,10 @@ jobs:
             // Check for file existence and log status
             console.log('Checking for required files:');
             
+            // Get job status information first
+            const testJobStatus = '${{ needs.test.result }}';
+            const dryRunStatus = '${{ needs.dry-run.result }}';
+            
             let transferSummary = '';
             if (fs.existsSync('transfer_summary.md')) {
               console.log('✓ Found transfer_summary.md');
@@ -333,10 +337,7 @@ jobs:
               ? '![Validation Status](https://img.shields.io/badge/Validation-Warning-yellow)'
               : '![Validation Status](https://img.shields.io/badge/Validation-Passed-brightgreen)';
             
-            // Check if previous jobs failed
-            const testJobStatus = '${{ needs.test.result }}';
-            const dryRunStatus = '${{ needs.dry-run.result }}';
-            
+            // Create job status info
             let jobsStatus = '';
             if (testJobStatus !== 'success') {
               jobsStatus = '\n\n⚠️ **Job Status**:\n';
