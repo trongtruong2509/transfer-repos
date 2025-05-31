@@ -71,6 +71,19 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Validate csv file format
+        if: steps.csv-changes.outputs.changed == 'true'
+        run: |
+          echo "Validating transfer_repos.csv format..."
+          # Install required dependencies for validation script
+          pip install requests
+          
+          # Run the comprehensive CSV format validation
+          python helpers/validate_csv.py --csv transfer_repos.csv --format-only
+          
+          # Script will exit with code 1 if validation fails, which will fail the job automatically
+          echo "CSV format validation completed successfully."
+
       - name: Run unit tests
         id: unit-tests
         continue-on-error: true  # Don't fail the workflow if tests fail
