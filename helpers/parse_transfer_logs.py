@@ -293,7 +293,9 @@ def generate_markdown_report(merged_data: List[Dict], output_file: str) -> None:
         
         f.write(f"### Summary\n\n")
         f.write(f"- ✅ **Ready to transfer**: {passed} repositories\n")
-        f.write(f"- ❌ **Failed validation**: {failed} repositories\n")
+        
+        if failed > 0:
+            f.write(f"- ❌ **Failed validation**: {failed} repositories\n")
         if unknown > 0:
             f.write(f"- ⚠️ **Unknown status**: {unknown} repositories\n")
 
