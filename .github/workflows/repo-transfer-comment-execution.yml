@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   execute-transfer:
-    name: Execute Repository Transfer
+    name: Repository Transfer PR Execution
     # No condition on github.event_name since this workflow is only triggered by issue_comment events
     # Added explicit condition to check for 'apply transfer' in the comment
     if: ${{ contains(github.event.comment.body, 'apply transfer') }}
