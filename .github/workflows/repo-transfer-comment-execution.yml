@@ -129,10 +129,8 @@ jobs:
             // Define which checks must pass before allowing CI to run
             // You can customize this list based on your requirements
             const requiredChecks = [
-              'lint',           // Example: linting check
-              'security-scan',  // Example: security scanning
-              'code-quality',   // Example: code quality check
-              // Add other check names that must pass
+              'Run Tests and Validate Transfers',
+              'Dry Run Repository Transfer'       
             ];
             
             console.log(`Checking status for commit: ${sha}`);
