@@ -116,7 +116,6 @@ jobs:
     #     run: |
     #       ./run_tests.sh -i
   
-
   dry-run:
     name: Dry Run Repository Transfer
     needs: test
@@ -333,8 +332,8 @@ jobs:
               validationResults + '\n\n' +
               '## Next Steps\n' +
               '1. Review the validation results and dry-run logs\n' +
-              '2. If everything looks correct, approve and merge this PR\n' +
-              '3. To execute the transfers immediately, comment "apply transfer" on this PR (requires approval)\n\n' +
+              '2. If everything looks correct, request reviewer for an approval\n' +
+              '3. To execute the transfers, comment "apply transfer" on this PR (requires approval and all check passed)\n\n' +
               'For more details, check the workflow logs and attached artifacts.';
             
             try {

@@ -2,23 +2,21 @@
 
 A Python-based tool to automate validation and transfer of repositories between GitHub organizations.
 
-[![Repository Transfer Workflow](https://github.com/OWNER/REPO/actions/workflows/repo-transfer-pr.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/repo-transfer-pr.yml)
-
 ## 🔄 Repository Transfer Workflow
 
-This tool is designed with a pull request-based workflow for safe, validated repository transfers:
+This tool is designed with a pull request-based workflow for safe, validated repository transfers.
 
-```mermaid
-graph TD
-    A[Clone Repository] --> B[Create New Branch]
-    B --> C[Update transfer_repos.csv]
-    C --> D[Create Pull Request]
-    D --> E[Automated Validation]
-    E -->|All Checks Pass| F[PR Approval]
-    F --> G[Comment "apply transfer"]
-    G --> H[Automated Transfer]
-    H --> I[Verify Results]
-```
+## Features
+
+- Validate GitHub access tokens and permissions before transfer
+- Thorough organization validation checks (existence, type, and user membership)
+- Transfer repositories between organizations
+- Two operation modes:
+  - Single repository transfer via command-line arguments
+  - Batch transfer via CSV file
+- Comprehensive logging with session-specific log files
+- Dry-run mode to simulate transfers without actually performing them
+- Debug mode for verbose logging
 
 ### Step-by-Step Guide:
 
@@ -38,8 +36,8 @@ graph TD
    - Format must be: `source_org,repo_name,dest_org` (one repository per line)
    ```csv
    source_org,repo_name,dest_org
-   nova-iris,repo-to-transfer,baohtruong
-   baohtruong,another-repo,nova-iris
+   organization_1,repo-to-transfer,organization_2
+   organization_3,another-repo,organization_4
    ```
 
 4. **Commit and Push**
@@ -68,25 +66,8 @@ graph TD
    - Check the status report in the PR comments
    - Verify repositories have been transferred correctly in GitHub
 
-## Features
 
-- Validate GitHub access tokens and permissions before transfer
-- Thorough organization validation checks (existence, type, and user membership)
-- Transfer repositories between organizations
-- Two operation modes:
-  - Single repository transfer via command-line arguments
-  - Batch transfer via CSV file
-- Comprehensive logging with session-specific log files
-- Dry-run mode to simulate transfers without actually performing them
-- Debug mode for verbose logging
-
-## Requirements
-
-- Python 3.6+
-- Required Python packages:
-  - requests
-
-## Installation
+## Installation and run locally
 
 1. Clone this repository:
    ```bash
@@ -291,7 +272,3 @@ The tool includes a comprehensive test suite with 45+ test cases covering all as
    ```
 
 For detailed information about running tests, test structure, and available test options, see [test/README.md](test/README.md).
-
-## License
-
-MIT
