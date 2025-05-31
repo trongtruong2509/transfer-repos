@@ -154,8 +154,10 @@ jobs:
           # Check if the command succeeded
           if [ -n "$DRY_RUN_EXIT_CODE" ] && [ $DRY_RUN_EXIT_CODE -ne 0 ]; then
             echo "::warning::Dry run exited with code $DRY_RUN_EXIT_CODE. Continuing to analyze available logs."
+            echo "dry_run_failed=true" >> $GITHUB_OUTPUT
           else
             echo "Dry run completed successfully."
+            echo "dry_run_failed=false" >> $GITHUB_OUTPUT
           fi
           
           # Make the helpers directory executable
@@ -168,17 +170,30 @@ jobs:
           if [ -f "validation_results.md" ]; then
             echo "Validation results generated successfully."
             cat validation_results.md
+            
+            # Check if the validation results contain errors
+            if grep -q -E "error|Error|❌|⚠️|\bfailed\b|\bFailed\b" validation_results.md; then
+              echo "::error::Validation found issues with repository transfers."
+              echo "validation_has_errors=true" >> $GITHUB_OUTPUT
+            else
+              echo "Validation passed with no issues."
+              echo "validation_has_errors=false" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "::warning::Failed to generate validation results. Creating empty validation results."
+            echo "::error::Failed to generate validation results."
+            echo "validation_has_errors=true" >> $GITHUB_OUTPUT
             echo "## Repository Transfer Validation Results" > validation_results.md
             echo "" >> validation_results.md
-            echo "⚠️ No validation data available. The dry run may have failed to generate logs." >> validation_results.md
+            echo "❌ No validation data available. The dry run may have failed to generate logs." >> validation_results.md
             echo "" >> validation_results.md
             echo "Please check the workflow logs for more details." >> validation_results.md
           fi
-          
-          # Always exit with success to prevent blocking PR comments
-          exit 0
+
+      - name: Check validation status
+        if: steps.dry-run.outputs.validation_has_errors == 'true'
+        run: |
+          echo "::error::Validation found issues with repository transfers. See validation_results.md for details."
+          exit 1
 
       - name: Upload validation results
         uses: actions/upload-artifact@v4
@@ -203,6 +218,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            return {
+              sha: pr.data.head.sha,
+              ref: pr.data.head.ref
+            };
       
       - name: Download transfer summary
         uses: actions/download-artifact@v4
@@ -320,3 +350,32 @@ jobs:
               // Don't fail the workflow, but log the error
               core.warning(`Failed to create PR comment: ${error.message}`);
             }
+            
+      - name: Set PR status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const testJobStatus = '${{ needs.test.result }}';
+            const dryRunStatus = '${{ needs.dry-run.result }}';
+            let state = 'success';
+            let description = 'Validation passed';
+            
+            if (testJobStatus !== 'success') {
+              state = 'failure';
+              description = 'Tests failed';
+            } else if (dryRunStatus !== 'success' && dryRunStatus !== 'skipped') {
+              state = 'failure';
+              description = 'Validation failed';
+            }
+            
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
+              state: state,
+              context: 'Repository Transfer PR Validation',
+              description: description,
+              target_url: runUrl
+            });
