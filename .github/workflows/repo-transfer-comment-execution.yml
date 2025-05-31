@@ -52,7 +52,35 @@ jobs:
             console.log('Comment contains trigger phrase. Proceeding to check PR approval status.');
             core.setOutput('should_execute', 'true');
             core.setOutput('pr_number', context.payload.issue.number);
-            
+      
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            return {
+              sha: pr.data.head.sha,
+              ref: pr.data.head.ref
+            };
+
+      - name: Set pending status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
+              state: 'pending',
+              context: 'tests',
+              description: 'Running tests...'
+            });
+
       - name: Check PR approval status
         id: check-approval
         if: steps.check-comment.outputs.should_execute == 'true'
