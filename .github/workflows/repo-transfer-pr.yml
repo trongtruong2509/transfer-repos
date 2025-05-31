@@ -41,7 +41,6 @@ jobs:
           # Export variables for tests
           echo "export GITHUB_TOKEN=${GITHUB_TOKEN_ADMIN}" > .env
 
-
       - name: Check for changes in transfer_repos.csv
         id: csv-changes
         run: |
@@ -96,59 +95,59 @@ jobs:
     #     run: |
     #       ./run_tests.sh -i
 
-      - name: Analyze CSV changes
-        if: steps.csv-changes.outputs.changed == 'true'
-        run: |
-          echo "Changes detected in transfer_repos.csv"
-          echo "Analyzing changes:"
+    #   - name: Analyze CSV changes
+    #     if: steps.csv-changes.outputs.changed == 'true'
+    #     run: |
+    #       echo "Changes detected in transfer_repos.csv"
+    #       echo "Analyzing changes:"
           
-          # Show a diff of the changes for PR comment
-          git diff --unified=0 origin/${{ github.base_ref }} origin/${{ github.head_ref }} -- transfer_repos.csv > csv_diff.txt
+    #       # Show a diff of the changes for PR comment
+    #       git diff --unified=0 origin/${{ github.base_ref }} origin/${{ github.head_ref }} -- transfer_repos.csv > csv_diff.txt
           
-          # Count number of repositories to be transferred
-          REPO_COUNT=$(grep -v "^source_org" transfer_repos.csv | grep -v "^$" | wc -l)
-          echo "Number of repositories to be transferred: $REPO_COUNT"
-          echo "REPO_COUNT=$REPO_COUNT" >> $GITHUB_ENV
+    #       # Count number of repositories to be transferred
+    #       REPO_COUNT=$(grep -v "^source_org" transfer_repos.csv | grep -v "^$" | wc -l)
+    #       echo "Number of repositories to be transferred: $REPO_COUNT"
+    #       echo "REPO_COUNT=$REPO_COUNT" >> $GITHUB_ENV
           
-          # Create summary of changes
-          echo "## Repository Transfer Changes" > transfer_summary.md
-          echo "" >> transfer_summary.md
-          echo "This PR includes the following repository transfers:" >> transfer_summary.md
-          echo "" >> transfer_summary.md
-          echo "| Source Org | Repository | Destination Org |" >> transfer_summary.md
-          echo "| ---------- | ---------- | --------------- |" >> transfer_summary.md
-          grep -v "^source_org" transfer_repos.csv | grep -v "^$" | awk -F, '{ print "| " $1 " | " $2 " | " $3 " |" }' >> transfer_summary.md
+    #       # Create summary of changes
+    #       echo "## Repository Transfer Changes" > transfer_summary.md
+    #       echo "" >> transfer_summary.md
+    #       echo "This PR includes the following repository transfers:" >> transfer_summary.md
+    #       echo "" >> transfer_summary.md
+    #       echo "| Source Org | Repository | Destination Org |" >> transfer_summary.md
+    #       echo "| ---------- | ---------- | --------------- |" >> transfer_summary.md
+    #       grep -v "^source_org" transfer_repos.csv | grep -v "^$" | awk -F, '{ print "| " $1 " | " $2 " | " $3 " |" }' >> transfer_summary.md
           
-          cat transfer_summary.md
+    #       cat transfer_summary.md
           
-      - name: Upload transfer summary
-        if: steps.csv-changes.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: transfer-summary
-          path: transfer_summary.md
-          retention-days: 1
+    #   - name: Upload transfer summary
+    #     if: steps.csv-changes.outputs.changed == 'true'
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: transfer-summary
+    #       path: transfer_summary.md
+    #       retention-days: 1
       
-      - name: Validate CSV and Repository Existence
-        if: steps.csv-changes.outputs.changed == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-        run: |
-          echo "Running CSV validation to check format and repository existence..."
-          python validate_csv.py --csv transfer_repos.csv
+    #   - name: Validate CSV and Repository Existence
+    #     if: steps.csv-changes.outputs.changed == 'true'
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+    #     run: |
+    #       echo "Running CSV validation to check format and repository existence..."
+    #       python validate_csv.py --csv transfer_repos.csv
           
-          # Save validation output for PR comment
-          echo "## CSV Validation Results" > csv_validation.md
-          echo "" >> csv_validation.md
-          echo "✓ All repositories in the CSV file exist and are ready for transfer." >> csv_validation.md
+    #       # Save validation output for PR comment
+    #       echo "## CSV Validation Results" > csv_validation.md
+    #       echo "" >> csv_validation.md
+    #       echo "✓ All repositories in the CSV file exist and are ready for transfer." >> csv_validation.md
 
-      - name: Upload CSV validation results
-        if: steps.csv-changes.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: csv-validation
-          path: csv_validation.md
-          retention-days: 1
+    #   - name: Upload CSV validation results
+    #     if: steps.csv-changes.outputs.changed == 'true'
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: csv-validation
+    #       path: csv_validation.md
+    #       retention-days: 1
 
   dry-run:
     name: Dry Run Repository Transfer
