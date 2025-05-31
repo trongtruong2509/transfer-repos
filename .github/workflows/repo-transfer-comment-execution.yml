@@ -8,8 +8,8 @@ on:
 permissions:
   contents: read
   statuses: write        
-  pull-requests: read    # Needed to read PR info
-  issues: read          # Needed for issue_comment trigger
+  pull-requests: write
+  issues: write       
 
 jobs:
   execute-transfer:
