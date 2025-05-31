@@ -80,7 +80,7 @@ jobs:
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'pending',
               context: 'Repository Transfer PR Execution',
-              description: 'Running tests...'
+              description: 'Running tests...',
               target_url: runUrl
             });
 
@@ -269,7 +269,7 @@ jobs:
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'success',
               context: 'Repository Transfer PR Execution',
-              description: 'Tests passed'
+              description: 'Tests passed',
               target_url: runUrl
             });
 
@@ -285,6 +285,6 @@ jobs:
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'failure',
               context: 'Repository Transfer PR Execution',
-              description: 'Tests failed'
+              description: 'Tests failed',
               target_url: runUrl
             });
