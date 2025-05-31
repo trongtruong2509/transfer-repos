@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
   statuses: write        
-  pull-requests: read    # Needed to read PR info
+  pull-requests: write
   issues: write
 
 jobs:
