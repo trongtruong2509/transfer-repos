@@ -153,7 +153,7 @@ jobs:
   dry-run:
     name: Dry Run Repository Transfer
     needs: test
-    if: always() && needs.test.result != 'cancelled'
+    if: needs.test.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -301,7 +301,11 @@ jobs:
             }
             
             let validationResults = '';
-            if (fs.existsSync('validation_results.md')) {
+            if (testJobStatus !== 'success') {
+              validationResults = '### ❌ Validation Skipped\n\n' +
+                'Repository validation was skipped because the test job failed.\n' +
+                'Please check the workflow logs and fix the tests before proceeding.\n';
+            } else if (fs.existsSync('validation_results.md')) {
               console.log('✓ Found validation_results.md');
               validationResults = fs.readFileSync('validation_results.md', 'utf8');
             } else {
@@ -334,17 +338,15 @@ jobs:
             const dryRunStatus = '${{ needs.dry-run.result }}';
             
             let jobsStatus = '';
-            if (testJobStatus !== 'success' || dryRunStatus !== 'success') {
+            if (testJobStatus !== 'success') {
               jobsStatus = '\n\n⚠️ **Job Status**:\n';
-              
-              if (testJobStatus !== 'success') {
-                jobsStatus += `- Test job: ${testJobStatus === 'failure' ? '❌ Failed' : '⚠️ ' + testJobStatus}\n`;
-              }
-              
-              if (dryRunStatus !== 'success') {
-                jobsStatus += `- Dry run job: ${dryRunStatus === 'failure' ? '❌ Failed' : '⚠️ ' + dryRunStatus}\n`;
-              }
-              
+              jobsStatus += `- Test job: ${testJobStatus === 'failure' ? '❌ Failed' : '⚠️ ' + testJobStatus}\n`;
+              jobsStatus += `- Dry run job: ⏭️ Skipped (depends on test job)\n`;
+              jobsStatus += '\nValidation steps were skipped due to test failures. Please fix the tests before proceeding.';
+            } else if (dryRunStatus !== 'success') {
+              jobsStatus = '\n\n⚠️ **Job Status**:\n';
+              jobsStatus += `- Test job: ✅ Success\n`;
+              jobsStatus += `- Dry run job: ${dryRunStatus === 'failure' ? '❌ Failed' : '⚠️ ' + dryRunStatus}\n`;
               jobsStatus += '\nSome validation steps may have been skipped. Review logs for more details.';
             }
             
