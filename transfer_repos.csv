@@ -4,6 +4,8 @@ nova-iris,test-public-org1-20250603,baohtruong
 nova-iris,test-private-org1-20250603,baohtruong
 nova-iris,test-with-branches-org1-20250603,baohtruong
 nova-iris,test-with-issues-org1-20250603,baohtruong
+nova-iris,test-with-actions-org1-20250603,baohtruong
 baohtruong,test-empty-org2-20250603,nova-iris
 baohtruong,test-public-org2-20250603,nova-iris
+baohtruong,test-private-org2-20250603,nova-iris
 
