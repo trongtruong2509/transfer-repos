@@ -199,8 +199,8 @@ jobs:
             if (!canProceed) {
               console.log('Not all required status checks have passed. Skipping transfer execution.');
               const failedChecksText = failedChecks.length > 0 
-                ? `\n\nFailed or pending checks:\n${failedChecks.map(c => `- ${c}`).join('\n')}`
-                : '';
+              ? `\n\nFailed or pending checks:\n${failedChecks.map(c => `- ${c.name}: ${c.state}`).join('\n')}`
+              : '';
               
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
