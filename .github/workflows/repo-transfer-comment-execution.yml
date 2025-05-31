@@ -9,7 +9,7 @@ permissions:
   contents: read
   statuses: write        
   pull-requests: read    # Needed to read PR info
-  issues: read          # Needed for issue_comment trigger
+  issues: write
 
 jobs:
   execute-transfer:
