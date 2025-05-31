@@ -124,68 +124,81 @@ jobs:
             }
             
             // Check if all required status checks have passed
-            const { data: combinedStatus } = await github.rest.repos.getCombinedStatusForRef({
+            const sha = '${{ fromJson(steps.pr.outputs.result).sha }}';
+        
+            // Define which checks must pass before allowing CI to run
+            // You can customize this list based on your requirements
+            const requiredChecks = [
+              'lint',           // Example: linting check
+              'security-scan',  // Example: security scanning
+              'code-quality',   // Example: code quality check
+              // Add other check names that must pass
+            ];
+            
+            console.log(`Checking status for commit: ${sha}`);
+            console.log(`Required checks: ${requiredChecks.join(', ')}`);
+            
+            // Get all status checks for the commit
+            const statusResponse = await github.rest.repos.getCombinedStatusForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: pr.head.sha
+              ref: sha
             });
             
-            // Get required checks from branch protection rules
-            const { data: branchProtection } = await github.rest.repos.getBranchProtection({
+            // Get all check runs for the commit
+            const checkRunsResponse = await github.rest.checks.listForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              branch: pr.base.ref
-            }).catch(err => {
-              console.log(`No branch protection found for ${pr.base.ref}: ${err.message}`);
-              return { data: { required_status_checks: { contexts: [] } } };
+              ref: sha
             });
             
-            const requiredChecks = branchProtection.required_status_checks?.contexts || [];
+            // Combine status checks and check runs
+            const allChecks = [];
             
-            // The name of the current workflow check
-            const currentWorkflowCheck = 'Repository Transfer PR Execution';
+            // Add commit status checks
+            statusResponse.data.statuses.forEach(status => {
+              allChecks.push({
+                name: status.context,
+                state: status.state,
+                type: 'status'
+              });
+            });
+            
+            // Add check runs
+            checkRunsResponse.data.check_runs.forEach(check => {
+              allChecks.push({
+                name: check.name,
+                state: check.conclusion || check.status,
+                type: 'check_run'
+              });
+            });
+            
+            console.log('All checks found:');
+            allChecks.forEach(check => {
+              console.log(`  - ${check.name}: ${check.state} (${check.type})`);
+            });
             
             // Check if all required checks have passed
-            let allRequiredChecksPassed = true;
-            let failedChecks = [];
+            const failedChecks = [];
+            const missingChecks = [];
             
-            if (requiredChecks.length > 0) {
-              // Filter out the current workflow from required checks to avoid circular dependency
-              const filteredRequiredChecks = requiredChecks.filter(check => 
-                check !== currentWorkflowCheck
-              );
+            for (const requiredCheck of requiredChecks) {
+              const check = allChecks.find(c => c.name === requiredCheck);
               
-              console.log(`Required checks (excluding current workflow): ${JSON.stringify(filteredRequiredChecks)}`);
-              
-              // Filter the statuses to only include the required ones (excluding this workflow)
-              const requiredStatuses = combinedStatus.statuses.filter(status => 
-                filteredRequiredChecks.includes(status.context)
-              );
-              
-              // Check if any required status failed or is pending
-              for (const check of filteredRequiredChecks) {
-                const status = combinedStatus.statuses.find(s => s.context === check);
-                if (!status || status.state !== 'success') {
-                  allRequiredChecksPassed = false;
-                  failedChecks.push(check);
-                }
-              }
-            } else {
-              // If there are no required checks defined, use the combined status but exclude this workflow
-              const relevantStatuses = combinedStatus.statuses.filter(s => 
-                s.context !== currentWorkflowCheck
-              );
-              
-              allRequiredChecksPassed = relevantStatuses.every(s => s.state === 'success');
-              
-              if (!allRequiredChecksPassed) {
-                failedChecks = relevantStatuses
-                  .filter(s => s.state !== 'success')
-                  .map(s => s.context);
+              if (!check) {
+                missingChecks.push(requiredCheck);
+              } else if (check.state !== 'success') {
+                failedChecks.push({
+                  name: requiredCheck,
+                  state: check.state
+                });
               }
             }
             
-            if (!allRequiredChecksPassed) {
+            // Determine if we can proceed
+            const canProceed = failedChecks.length === 0 && missingChecks.length === 0;
+
+            if (!canProceed) {
               console.log('Not all required status checks have passed. Skipping transfer execution.');
               const failedChecksText = failedChecks.length > 0 
                 ? `\n\nFailed or pending checks:\n${failedChecks.map(c => `- ${c}`).join('\n')}`
@@ -365,3 +378,4 @@ jobs:
               description: 'Tests failed',
               target_url: runUrl
             });
+ 
