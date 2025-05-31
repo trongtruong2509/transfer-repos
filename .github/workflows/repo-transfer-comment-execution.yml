@@ -73,13 +73,15 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'pending',
-              context: 'tests',
+              context: 'Repository Transfer PR Execution',
               description: 'Running tests...'
+              target_url: runUrl
             });
 
       - name: Check PR approval status
@@ -209,6 +211,7 @@ jobs:
           retention-days: 30
           
       - name: Report transfer results
+        id: report-results
         if: steps.check-approval.outputs.can_execute == 'true'
         env:
           PR_NUMBER: ${{ steps.check-comment.outputs.pr_number }}
@@ -228,6 +231,7 @@ jobs:
             }
             
             const isSuccess = process.env.TRANSFER_SUCCESS === 'true';
+            core.setOutput('isSuccess', isSuccess);
             const statusBadge = isSuccess 
               ? '![Transfer Status](https://img.shields.io/badge/Transfer-Completed-brightgreen)'
               : '![Transfer Status](https://img.shields.io/badge/Transfer-Failed-red)';
@@ -254,29 +258,33 @@ jobs:
             }
 
       - name: Report success
-        if: success()
+        if: success() && steps.report-results.outputs.isSuccess == 'true'
         uses: actions/github-script@v7
         with:
           script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'success',
-              context: 'tests',
+              context: 'Repository Transfer PR Execution',
               description: 'Tests passed'
+              target_url: runUrl
             });
 
       - name: Report failure
-        if: failure()
+        if: failure() || steps.report-results.outputs.isSuccess == 'false'
         uses: actions/github-script@v7
         with:
           script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'failure',
-              context: 'tests',
+              context: 'Repository Transfer PR Execution',
               description: 'Tests failed'
+              target_url: runUrl
             });
