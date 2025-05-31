@@ -114,6 +114,9 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           
+          # Ensure log directories exist
+          mkdir -p logs
+          
       - name: Execute repository transfers
         if: steps.check-approval.outputs.can_execute == 'true'
         id: execute-transfers
@@ -141,33 +144,21 @@ jobs:
           echo "Latest log file: $LATEST_LOG"
           
           if [ -f "$LATEST_LOG" ]; then
-            # Create a summary of transfers for PR comment
-            echo "## Repository Transfer Results" > transfer_results.md
-            echo "" >> transfer_results.md
+            # Use our improved log parser to generate a detailed report in real_run mode
+            echo "Generating transfer results using log parser..."
+            python helpers/parse_transfer_logs.py --mode real_run --log-file "$LATEST_LOG" --output-file transfer_results.md
             
-            # Extract transfer results
-            echo "### Transfer Summary" >> transfer_results.md
-            echo "" >> transfer_results.md
-            echo "| Source | Destination | Status |" >> transfer_results.md
-            echo "| ------ | ----------- | ------ |" >> transfer_results.md
-            
-            # Extract successful transfers
-            grep -E "Transfer completed" $LATEST_LOG | grep -v "DEBUG" | grep -E -o "([a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+) → ([a-zA-Z0-9_-]+)" | sed -E 's/([^ ]+) → ([^ ]+)/| \1 | \2 | ✅ Success |/g' >> transfer_results.md || echo "| | | No successful transfers found |" >> transfer_results.md
-            
-            # Extract failed transfers
-            grep -E "Transfer failed" $LATEST_LOG | grep -v "DEBUG" | grep -E -o "([a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+) → ([a-zA-Z0-9_-]+)" | sed -E 's/([^ ]+) → ([^ ]+)/| \1 | \2 | ❌ Failed |/g' >> transfer_results.md || echo "No failed transfers found" > /dev/null
-            
-            # Extract skipped transfers
-            grep -E "Transfer skipped" $LATEST_LOG | grep -v "DEBUG" | grep -E -o "([a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+) → ([a-zA-Z0-9_-]+)" | sed -E 's/([^ ]+) → ([^ ]+)/| \1 | \2 | ⚠️ Skipped |/g' >> transfer_results.md || echo "No skipped transfers found" > /dev/null
-            
-            echo "" >> transfer_results.md
-            
-            if [ -n "$TRANSFER_EXIT_CODE" ] && [ $TRANSFER_EXIT_CODE -ne 0 ]; then
-              echo "### ⚠️ Warning" >> transfer_results.md
-              echo "" >> transfer_results.md
-              echo "The transfer process exited with code $TRANSFER_EXIT_CODE. Some transfers may not have completed." >> transfer_results.md
-              echo "Please check the workflow logs for more details." >> transfer_results.md
-              echo "" >> transfer_results.md
+            # Check if parser results were generated
+            if [ -f "validation_results.md" ]; then
+                echo "Validation results generated successfully."
+                cat validation_results.md
+            else
+                echo "::warning::Failed to generate validation results. Creating empty validation results."
+                echo "::warning::Generated transfer results file is empty. Creating a basic report."
+                echo "## Repository Transfer Results" > transfer_results.md
+                echo "" >> transfer_results.md
+                echo "⚠️ No detailed transfer data could be extracted." >> transfer_results.md
+                echo "Please check the workflow logs for more details." >> transfer_results.md
             fi
             
             cat transfer_results.md

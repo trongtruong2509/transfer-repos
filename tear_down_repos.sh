@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # INPUT_CSV="transfer_repos.csv"
-INPUT_CSV="teardown_repos.csv"
+INPUT_CSV="sample_repos.csv"
 LOG_FILE="delete_repos.log"
 DRY_RUN=false
 
@@ -28,7 +28,7 @@ echo "==== Deletion started at $(date) ====" > "$LOG_FILE"
 
 # Process CSV, skipping header
 tail -n +2 "$INPUT_CSV" | while IFS=',' read -r source_org repo_name dest_org; do
-  repo_full="$source_org/$repo_name"
+  repo_full="$dest_org/$repo_name"
   echo "🗑️  Attempting to delete: $repo_full" | tee -a "$LOG_FILE"
 
   if $DRY_RUN; then

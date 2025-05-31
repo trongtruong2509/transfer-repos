@@ -43,7 +43,7 @@ class TestCSVProcessing:
         # Verify sleep was called between repositories in non-dry-run mode (one less than total transfers)
         assert mock_sleep.call_count == 4  # Called for repos 2-5 (not for the first repo)
         # Check that sleep was called with the right delay value
-        mock_sleep.assert_has_calls([call(15)] * 4)
+        mock_sleep.assert_has_calls([call(5)] * 4)
 
     @patch.object(GitHubRepoTransfer, 'validate_token')
     def test_csv_file_not_found(self, mock_validate_token):
@@ -111,7 +111,7 @@ class TestCSVProcessing:
         
         # Verify sleep was called once (after the first successful transfer)
         assert mock_sleep.call_count == 1
-        mock_sleep.assert_called_once_with(15)
+        mock_sleep.assert_called_once_with(5)
 
     @patch.object(GitHubRepoTransfer, 'transfer_repository')
     @patch.object(GitHubRepoTransfer, 'validate_token')
