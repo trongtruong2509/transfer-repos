@@ -80,11 +80,11 @@ jobs:
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'pending',
               context: 'Repository Transfer PR Execution',
-              description: 'Running tests...'
+              description: 'Running tests...',
               target_url: runUrl
             });
 
-      - name: Check PR approval status
+      - name: Check PR approval status and required status checks
         id: check-approval
         if: steps.check-comment.outputs.should_execute == 'true'
         env:
@@ -123,7 +123,84 @@ jobs:
               return core.setOutput('can_execute', 'false');
             }
             
-            console.log('PR has at least one approval. Proceeding with transfer execution.');
+            // Check if all required status checks have passed
+            const { data: combinedStatus } = await github.rest.repos.getCombinedStatusForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha
+            });
+            
+            // Get required checks from branch protection rules
+            const { data: branchProtection } = await github.rest.repos.getBranchProtection({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: pr.base.ref
+            }).catch(err => {
+              console.log(`No branch protection found for ${pr.base.ref}: ${err.message}`);
+              return { data: { required_status_checks: { contexts: [] } } };
+            });
+            
+            const requiredChecks = branchProtection.required_status_checks?.contexts || [];
+            
+            // The name of the current workflow check
+            const currentWorkflowCheck = 'Repository Transfer PR Execution';
+            
+            // Check if all required checks have passed
+            let allRequiredChecksPassed = true;
+            let failedChecks = [];
+            
+            if (requiredChecks.length > 0) {
+              // Filter out the current workflow from required checks to avoid circular dependency
+              const filteredRequiredChecks = requiredChecks.filter(check => 
+                check !== currentWorkflowCheck
+              );
+              
+              console.log(`Required checks (excluding current workflow): ${JSON.stringify(filteredRequiredChecks)}`);
+              
+              // Filter the statuses to only include the required ones (excluding this workflow)
+              const requiredStatuses = combinedStatus.statuses.filter(status => 
+                filteredRequiredChecks.includes(status.context)
+              );
+              
+              // Check if any required status failed or is pending
+              for (const check of filteredRequiredChecks) {
+                const status = combinedStatus.statuses.find(s => s.context === check);
+                if (!status || status.state !== 'success') {
+                  allRequiredChecksPassed = false;
+                  failedChecks.push(check);
+                }
+              }
+            } else {
+              // If there are no required checks defined, use the combined status but exclude this workflow
+              const relevantStatuses = combinedStatus.statuses.filter(s => 
+                s.context !== currentWorkflowCheck
+              );
+              
+              allRequiredChecksPassed = relevantStatuses.every(s => s.state === 'success');
+              
+              if (!allRequiredChecksPassed) {
+                failedChecks = relevantStatuses
+                  .filter(s => s.state !== 'success')
+                  .map(s => s.context);
+              }
+            }
+            
+            if (!allRequiredChecksPassed) {
+              console.log('Not all required status checks have passed. Skipping transfer execution.');
+              const failedChecksText = failedChecks.length > 0 
+                ? `\n\nFailed or pending checks:\n${failedChecks.map(c => `- ${c}`).join('\n')}`
+                : '';
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `⚠️ **Transfer Execution Blocked**\n\nAll required status checks must pass before transfers can be executed. Please fix the failing checks and try again.${failedChecksText}`
+              });
+              return core.setOutput('can_execute', 'false');
+            }
+            
+            console.log('PR has approvals and all required status checks have passed. Proceeding with transfer execution.');
             core.setOutput('can_execute', 'true');
             core.setOutput('branch_name', pr.head.ref);
             
@@ -269,7 +346,7 @@ jobs:
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'success',
               context: 'Repository Transfer PR Execution',
-              description: 'Tests passed'
+              description: 'Tests passed',
               target_url: runUrl
             });
 
@@ -285,6 +362,6 @@ jobs:
               sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
               state: 'failure',
               context: 'Repository Transfer PR Execution',
-              description: 'Tests failed'
+              description: 'Tests failed',
               target_url: runUrl
             });
