@@ -223,3 +223,31 @@ jobs:
               console.error('Failed to create PR comment:', error);
               core.warning(`Failed to create PR comment: ${error.message}`);
             }
+
+      - name: Report success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
+              state: 'success',
+              context: 'tests',
+              description: 'Tests passed'
+            });
+
+      - name: Report failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
+              state: 'failure',
+              context: 'tests',
+              description: 'Tests failed'
+            });
