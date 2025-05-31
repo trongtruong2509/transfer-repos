@@ -287,7 +287,7 @@ def generate_markdown_report(merged_data: List[Dict], output_file: str) -> None:
                 source_parts = row['source'].split('/')
                 source_org = source_parts[0]
                 repo_name = source_parts[1] if len(source_parts) > 1 else ""
-                f.write(f"- **{source_org}/{repo_name} → {row['destination']}**: `{row['error_message']}`\n")
+                f.write(f"- {source_org}/{repo_name} → {row['destination']}: `**{row['error_message']}**`\n")
         
         f.write("\n")
         
