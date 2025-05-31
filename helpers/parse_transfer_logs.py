@@ -13,12 +13,13 @@ import csv
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 
-def extract_validation_results(log_file_path: str) -> List[Dict]:
+def extract_validation_results(log_file_path: str, log_type: str = 'dry_run') -> List[Dict]:
     """
     Parse the log file and extract validation results for each repository transfer.
     
     Args:
         log_file_path: Path to the log file
+        log_type: Type of log to parse ('dry_run' or 'real_run')
         
     Returns:
         List of dictionaries containing validation results for each repository
@@ -33,6 +34,7 @@ def extract_validation_results(log_file_path: str) -> List[Dict]:
     dest_org_status = None
     repo_status = None
     error_message = None
+    is_dry_run = log_type == 'dry_run'
     
     with open(log_file_path, 'r') as f:
         for line in f:
@@ -65,8 +67,17 @@ def extract_validation_results(log_file_path: str) -> List[Dict]:
                 repo_status = None
                 error_message = None
             
-            # Match the "Transfer completed" line to indicate success
-            if line.strip().endswith('Transfer completed') and current_repo:
+            # Match success indicators based on log type
+            if is_dry_run and line.strip().endswith('Transfer completed') and current_repo:
+                if source_org_status is None:
+                    source_org_status = 'passed'
+                if dest_org_status is None:
+                    dest_org_status = 'passed'
+                if repo_status is None:
+                    repo_status = 'passed'
+            
+            # For real run logs, we need to look for different success patterns
+            if not is_dry_run and 'Repository transfer initiated successfully' in line and current_repo:
                 if source_org_status is None:
                     source_org_status = 'passed'
                 if dest_org_status is None:
@@ -74,7 +85,7 @@ def extract_validation_results(log_file_path: str) -> List[Dict]:
                 if repo_status is None:
                     repo_status = 'passed'
                 
-            # Match specific validation steps
+            # Match specific validation steps that are common to both log types
             if 'Source organization access confirmed' in line:
                 source_org_status = 'passed'
             
@@ -126,10 +137,45 @@ def extract_validation_results(log_file_path: str) -> List[Dict]:
                 if repo_match:
                     error_message = f"Repository not accessible: {repo_match.group(1)}"
             
-            # Match the specific "Transfer failed" line
+            # Match common failure patterns for both log types
             if 'Transfer failed' in line and current_repo:
-                # If we have a failed transfer but don't know why, check next line for details
-                continue
+                if not error_message:
+                    # Generic error if no specific error was found
+                    error_message = "Transfer failed"
+            
+            # Real run specific errors
+            if not is_dry_run and 'Repository transfer failed' in line and current_repo:
+                # Real run logs show repository transfer failures with specific GitHub API errors
+                repo_status = 'failed'
+                
+            # Extract specific API error message for real runs
+            if not is_dry_run and 'GitHub API returned' in line and current_repo:
+                api_error_match = re.search(r'GitHub API returned (\d+): (.*)', line)
+                if api_error_match:
+                    status_code = api_error_match.group(1)
+                    error_detail = api_error_match.group(2)
+                    
+                    # Try to extract specific error message from the JSON response
+                    # Look for patterns like "message":"Repositories cannot be transferred..."
+                    error_message_match = re.search(r'"message":"([^"]+)"', error_detail)
+                    
+                    # Also look for more detailed error messages in the errors array
+                    detailed_error_match = re.search(r'"errors":\[\{"[^}]*"message":"([^"]+)"', error_detail)
+                    
+                    if detailed_error_match:
+                        # This gets the more specific error message from the errors array
+                        api_message = detailed_error_match.group(1)
+                        error_message = f"API Error: {api_message}"
+                    elif error_message_match:
+                        # Fallback to the main message
+                        api_message = error_message_match.group(1)
+                        error_message = f"API Error: {api_message}"
+                    else:
+                        # Last resort if no message pattern matches
+                        error_message = f"API Error ({status_code})"
+                    
+                    # Mark as failed if it hasn't been already
+                    repo_status = 'failed'
     
     # Add the last repository if exists
     if current_repo:
@@ -139,19 +185,6 @@ def extract_validation_results(log_file_path: str) -> List[Dict]:
             'source_org_status': source_org_status or 'unknown',
             'dest_org_status': dest_org_status or 'unknown',
             'repo_status': repo_status or 'unknown',
-            'error_message': error_message
-        })
-    
-    return results
-    
-    # Add the last repository if exists
-    if current_repo:
-        results.append({
-            'source': f"{current_repo['source_org']}/{current_repo['repo_name']}",
-            'destination': current_repo['dest_org'],
-            'source_org_status': source_org_status,
-            'dest_org_status': dest_org_status,
-            'repo_status': repo_status,
             'error_message': error_message
         })
     
@@ -229,13 +262,14 @@ def merge_csv_and_validation(csv_data: List[Dict], validation_results: List[Dict
     
     return merged_data
 
-def generate_markdown_report(merged_data: List[Dict], output_file: str) -> None:
+def generate_markdown_report(merged_data: List[Dict], output_file: str, log_type: str = 'dry_run') -> None:
     """
     Generate a Markdown report from the merged data.
     
     Args:
         merged_data: List of dictionaries with merged data
         output_file: Path to the output file
+        log_type: Type of log being parsed ('dry_run' or 'real_run')
     """
     # Calculate statistics
     passed = sum(1 for row in merged_data if 
@@ -251,9 +285,17 @@ def generate_markdown_report(merged_data: List[Dict], output_file: str) -> None:
     # Identify errors for detailed reporting
     errors = [row for row in merged_data if row['error_message']]
     
+    is_dry_run = log_type == 'dry_run'
+    
     with open(output_file, 'w') as f:
-        f.write("### Repository Transfer Validation Results\n\n")
-        f.write("The following repositories were validated for transfer:\n\n")
+        # Different headers based on log type
+        if is_dry_run:
+            f.write("### Repository Transfer Validation Results\n\n")
+            f.write("The following repositories were validated for transfer:\n\n")
+        else:
+            f.write("### Repository Transfer Execution Results\n\n")
+            f.write("The following repositories were processed for transfer:\n\n")
+            
         f.write("| Source Org | Repository | Destination Org | Status |\n")
         f.write("|------------|------------|-----------------|--------|\n")
         
@@ -271,46 +313,75 @@ def generate_markdown_report(merged_data: List[Dict], output_file: str) -> None:
                 status = "❌ Failed - Destination org invalid"
             elif row['repo_status'] == 'failed':
                 status = "❌ Failed - Repository not found"
+            elif row['error_message'] and "cannot be transferred to the original owner" in row['error_message'].lower():
+                status = "❌ Failed - Original owner"
+            elif row['error_message']:
+                status = f"❌ Failed - {row['error_message']}"
             elif row['source_org_status'] == 'unknown' or row['dest_org_status'] == 'unknown' or row['repo_status'] == 'unknown':
                 status = "⚠️ Unknown"
             else:
-                status = "✅ Passed"
+                if is_dry_run:
+                    status = "✅ Passed validation"
+                else:
+                    status = "✅ Successfully transferred"
             
             f.write(f"| {source_org} | {repo_name} | {destination_org} | {status} |\n")
         
         f.write("\n")
 
-        # Add summary statistics
-        passed = sum(1 for row in merged_data if 
-                    row['source_org_status'] == 'passed' and 
-                    row['dest_org_status'] == 'passed' and 
-                    row['repo_status'] == 'passed')
-        failed = sum(1 for row in merged_data if 
-                    row['source_org_status'] == 'failed' or 
-                    row['dest_org_status'] == 'failed' or 
-                    row['repo_status'] == 'failed')
-        unknown = len(merged_data) - passed - failed
-        
+        # Add summary statistics with different wording based on log type
         f.write(f"### Summary\n\n")
-        f.write(f"- ✅ **Ready to transfer**: {passed} repositories\n")
-        
-        if failed > 0:
-            f.write(f"- ❌ **Failed validation**: {failed} repositories\n")
+        if is_dry_run:
+            f.write(f"- ✅ **Ready to transfer**: {passed} repositories\n")
+            if failed > 0:
+                f.write(f"- ❌ **Failed validation**: {failed} repositories\n")
+        else:
+            f.write(f"- ✅ **Successfully transferred**: {passed} repositories\n")
+            if failed > 0:
+                f.write(f"- ❌ **Failed to transfer**: {failed} repositories\n")
+                
+        if unknown > 0:
+            f.write(f"- ⚠️ **Unknown status**: {unknown} repositories\n")
+            
+        # Add error details section for real runs
+        if not is_dry_run and errors:
+            f.write("\n### Error Details\n\n")
+            for error in errors:
+                source = error['source']
+                dest = error['destination']
+                msg = error['error_message'] or "Unknown error"
+                f.write(f"- **{source} → {dest}**: {msg}\n")
         if unknown > 0:
             f.write(f"- ⚠️ **Unknown status**: {unknown} repositories\n")
 
-def find_latest_log_file(log_dir: str = 'logs', pattern: str = 'repo_transfer_*_dry_run.log') -> Optional[str]:
+def find_latest_log_file(log_dir: str = 'logs', log_type: str = 'dry_run') -> Optional[str]:
     """
     Find the latest log file in the specified directory.
     
     Args:
         log_dir: Directory containing log files
-        pattern: Glob pattern to match log files
+        log_type: Type of log to find ('dry_run' or 'real_run')
         
     Returns:
         Path to the latest log file, or None if no file found
     """
+    # Determine the pattern based on log type
+    if log_type == 'dry_run':
+        pattern = 'repo_transfer_*_dry_run.log'
+    else:  # real_run
+        # For real run logs, they don't have the '_dry_run' suffix
+        pattern = 'repo_transfer_*.log'
+        # Exclude dry run logs to avoid matching them
+        exclude_pattern = '*_dry_run.log'
+    
+    # Get all matching log files
     log_files = glob.glob(os.path.join(log_dir, pattern))
+    
+    # For real run, exclude dry run logs
+    if log_type == 'real_run':
+        exclude_files = set(glob.glob(os.path.join(log_dir, exclude_pattern)))
+        log_files = [f for f in log_files if f not in exclude_files]
+    
     if not log_files:
         return None
     
@@ -321,16 +392,35 @@ def main():
     """
     Main function to run the log parser.
     """
-    # Find the latest log file
-    log_file = find_latest_log_file()
+    import argparse
+    
+    # Set up command-line argument parsing
+    parser = argparse.ArgumentParser(description='Parse repository transfer logs and generate a report')
+    parser.add_argument('--mode', choices=['dry_run', 'real_run'], default='dry_run',
+                      help='Type of log to parse (dry_run or real_run)')
+    parser.add_argument('--log-file', help='Specific log file to parse (optional)')
+    parser.add_argument('--csv-file', default='transfer_repos.csv',
+                      help='CSV file with repository transfer information (default: transfer_repos.csv)')
+    parser.add_argument('--output-file', default='validation_results.md',
+                      help='Output Markdown file (default: validation_results.md)')
+    
+    args = parser.parse_args()
+    log_type = args.mode
+    
+    # Determine the log file to use
+    if args.log_file:
+        log_file = args.log_file
+    else:
+        log_file = find_latest_log_file(log_type=log_type)
+    
     if not log_file:
-        print("No log file found. Please run a dry-run first.")
+        print(f"No {log_type} log file found. Please run a {log_type} first.")
         return
     
-    print(f"Analyzing log file: {log_file}")
+    print(f"Analyzing {log_type} log file: {log_file}")
     
     # Read CSV data
-    csv_file = 'transfer_repos.csv'
+    csv_file = args.csv_file
     csv_data = read_csv_data(csv_file)
     
     if not csv_data:
@@ -340,30 +430,27 @@ def main():
     print(f"Found {len(csv_data)} transfers in CSV file")
     
     # Parse log file
-    validation_results = extract_validation_results(log_file)
+    validation_results = extract_validation_results(log_file, log_type)
     
     if not validation_results:
         print("No validation results found in log file")
-        with open('validation_results.md', 'w') as f:
+        with open(args.output_file, 'w') as f:
             f.write("### Repository Transfer Validation Results\n\n")
-            f.write("⚠️ No validation data available. The dry run may have failed to generate logs.\n\n")
+            f.write(f"⚠️ No validation data available. The {log_type} may have failed to generate logs.\n\n")
             f.write("Please check the workflow logs for more details.\n")
         return
     
     print(f"Found {len(validation_results)} validation results in log file")
     
-    # Use the validation results directly (without merging with CSV) to avoid duplication
-    output_file = 'validation_results.md'
-    
     # If we have CSV data, merge it for the most complete picture
     if csv_data:
         merged_data = merge_csv_and_validation(csv_data, validation_results)
-        generate_markdown_report(merged_data, output_file)
+        generate_markdown_report(merged_data, args.output_file, log_type)
     else:
         # Otherwise just use the validation results directly
-        generate_markdown_report(validation_results, output_file)
+        generate_markdown_report(validation_results, args.output_file, log_type)
     
-    print(f"Validation report generated: {output_file}")
+    print(f"Validation report generated: {args.output_file}")
 
 if __name__ == "__main__":
     main()

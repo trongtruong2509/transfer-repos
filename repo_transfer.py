@@ -189,23 +189,55 @@ class GitHubRepoTransfer:
             self.logger.error(f"Organization validation error for {org_name}: {str(e)}")
             return False
             
+    # def validate_repo_access(self, org_name: str, repo_name: str) -> bool:
+    #     """
+    #     Validate access to the specified repository.
+        
+    #     Args:
+    #         org_name: Name of the GitHub organization
+    #         repo_name: Name of the repository
+            
+    #     Returns:
+    #         bool: True if access is valid, False otherwise
+    #     """
+    #     self.logger.debug(f"Validating access to repository: {org_name}/{repo_name}")
+    #     try:
+    #         response = self.session.get(f"https://api.github.com/repos/{org_name}/{repo_name}")
+    #         if response.status_code == 200:
+    #             self.logger.debug(f"Repository access validated: {org_name}/{repo_name}")
+    #             return True
+    #         else:
+    #             self.logger.error(f"Repository access failed for {org_name}/{repo_name}: {response.status_code} - {response.text}")
+    #             return False
+    #     except Exception as e:
+    #         self.logger.error(f"Repository validation error for {org_name}/{repo_name}: {str(e)}")
+    #         return False
+
     def validate_repo_access(self, org_name: str, repo_name: str) -> bool:
         """
-        Validate access to the specified repository.
+        Validate that the repository exists AND is actually owned by the specified org.
         
         Args:
             org_name: Name of the GitHub organization
             repo_name: Name of the repository
             
         Returns:
-            bool: True if access is valid, False otherwise
+            bool: True if repo exists and is owned by org_name, False otherwise
         """
         self.logger.debug(f"Validating access to repository: {org_name}/{repo_name}")
         try:
             response = self.session.get(f"https://api.github.com/repos/{org_name}/{repo_name}")
             if response.status_code == 200:
-                self.logger.debug(f"Repository access validated: {org_name}/{repo_name}")
-                return True
+                repo_data = response.json()
+                actual_owner = repo_data['owner']['login']
+                
+                # Check if the actual owner matches the requested org
+                if actual_owner.lower() == org_name.lower():
+                    self.logger.debug(f"Repository access validated: {org_name}/{repo_name}")
+                    return True
+                else:
+                    self.logger.error(f"Repository {repo_name} found but owned by '{actual_owner}', not '{org_name}' (likely transferred/redirected)")
+                    return False
             else:
                 self.logger.error(f"Repository access failed for {org_name}/{repo_name}: {response.status_code} - {response.text}")
                 return False
@@ -327,9 +359,16 @@ class GitHubRepoTransfer:
             # For normal headers, use info level with green color
             self.logger.info(f"{GREEN}{title}{RESET}")
     
-    def _log_step(self, step_number: int, total_steps: int, description: str) -> None:
+    def _log_step(self, step_number: int, total_steps: int, description: str, header: bool=False) -> None:
         """Log a numbered step in a multi-step process."""
-        self.logger.info(f"Step {step_number}/{total_steps}: {description}")
+        # Define color codes
+        GREEN = '\033[92m'  # Bright green
+        RESET = '\033[0m'   # Reset to default
+
+        if header:
+            self.logger.info(f"{GREEN}Step {step_number}/{total_steps}: {description}{RESET}")
+        else:
+            self.logger.info(f"Step {step_number}/{total_steps}: {description}")
         
     def _log_step_result(self, success: bool, message: str, details: str = None) -> None:
         """Log the result of a step with visual indicator."""
@@ -594,7 +633,7 @@ class GitHubRepoTransfer:
                     repo_name = row['repo_name'].strip()
                     dest_org = row['dest_org'].strip()
                     
-                    self._log_step(i, len(repos), f"Processing {source_org}/{repo_name} → {dest_org}")
+                    self._log_step(i, len(repos), f"Processing {source_org}/{repo_name} → {dest_org}", header=True)
                     
                     # Prompt for confirmation before each transfer if in confirm_each mode
                     if self.confirm_each and not self.auto_approve:
