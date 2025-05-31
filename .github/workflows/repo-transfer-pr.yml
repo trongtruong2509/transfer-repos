@@ -334,7 +334,7 @@ jobs:
               validationResults.includes('⚠️');
             
             const statusBadge = hasErrors 
-              ? '![Validation Status](https://img.shields.io/badge/Validation-Warning-yellow)'
+              ? '![Validation Status](https://img.shields.io/badge/Transfer-Failed-red)'
               : '![Validation Status](https://img.shields.io/badge/Validation-Passed-brightgreen)';
             
             // Create job status info
