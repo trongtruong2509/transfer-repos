@@ -1,20 +1,72 @@
 # GitHub Repository Transfer Tool
 
-A Python-based tool to automate validation and transfer of repositor### GitHub Actions Integration
-
-This tool is integrated with GitHub Actions to automate repository transfers via Pull Requests.
-
-### How It Works
-
-1. Create a Pull Request with changes to `transfer_repos.csv`
-2. GitHub Actions will automatically:
-   - Run unit tests and integration tests
-   - Validate the CSV format and check repository existence
-   - If validation passes, perform a dry-run using the repositories listed in `transfer_repos.csv`
-   - Upload the dry-run logs as an artifact for review
-   - Add a detailed comment to the PR with validation and dry-run results GitHub organizations.
+A Python-based tool to automate validation and transfer of repositories between GitHub organizations.
 
 [![Repository Transfer Workflow](https://github.com/OWNER/REPO/actions/workflows/repo-transfer-pr.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/repo-transfer-pr.yml)
+
+## 🔄 Repository Transfer Workflow
+
+This tool is designed with a pull request-based workflow for safe, validated repository transfers:
+
+```mermaid
+graph TD
+    A[Clone Repository] --> B[Create New Branch]
+    B --> C[Update transfer_repos.csv]
+    C --> D[Create Pull Request]
+    D --> E[Automated Validation]
+    E -->|All Checks Pass| F[PR Approval]
+    F --> G[Comment "apply transfer"]
+    G --> H[Automated Transfer]
+    H --> I[Verify Results]
+```
+
+### Step-by-Step Guide:
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/your-org/repo-transfer-tool.git
+   cd repo-transfer-tool
+   ```
+
+2. **Create a New Branch**
+   ```bash
+   git checkout -b transfer-repos-YYYYMMDD
+   ```
+
+3. **Update Transfer List**
+   - Edit the `transfer_repos.csv` file to include ONLY the repositories you want to transfer
+   - Format must be: `source_org,repo_name,dest_org` (one repository per line)
+   ```csv
+   source_org,repo_name,dest_org
+   nova-iris,repo-to-transfer,baohtruong
+   baohtruong,another-repo,nova-iris
+   ```
+
+4. **Commit and Push**
+   ```bash
+   git add transfer_repos.csv
+   git commit -m "Add repositories for transfer"
+   git push -u origin transfer-repos-YYYYMMDD
+   ```
+
+5. **Open a Pull Request**
+   - Go to the repository on GitHub and create a pull request
+   - This will automatically trigger validation workflows
+
+6. **Review Validation Results**
+   - The PR will show results from automatic validation as comments
+   - Check the workflow logs and validation artifacts
+   - Make any necessary corrections to the CSV file if issues are found
+
+7. **Execute the Transfer**
+   - Once validation passes and your PR has been approved
+   - Comment `apply transfer` on the PR
+   - This will trigger the actual repository transfer process
+   - Results will be posted as comments on the PR
+
+8. **Verify the Transfer**
+   - Check the status report in the PR comments
+   - Verify repositories have been transferred correctly in GitHub
 
 ## Features
 
@@ -90,6 +142,7 @@ org1,repo2,org3
 
 - `--dry-run`: Simulate the transfer process without actually transferring repos
 - `-v, --verbose`: Enable verbose debug logging
+- `--auto-approve`: Skip confirmation prompts (useful for automation)
 
 ### Example Usage
 
@@ -100,50 +153,56 @@ org1,repo2,org3
 
 2. Transfer multiple repositories using a CSV file:
    ```bash
-   python repo_transfer.py --csv sample_repos.csv
+   python repo_transfer.py --csv transfer_repos.csv
    ```
 
 3. Perform a dry run (no actual transfers):
    ```bash
-   python repo_transfer.py --source-org my-source-org --repo-name my-repo --dest-org my-dest-org --dry-run
+   python repo_transfer.py --csv transfer_repos.csv --dry-run
    ```
 
-4. Enable verbose logging:
-   ```bash
-   python repo_transfer.py --source-org my-source-org --repo-name my-repo --dest-org my-dest-org -v
-   ```
-
-## GitHub Actions Integration
+## GitHub Actions Workflow Details
 
 This tool is integrated with GitHub Actions to automate repository transfers via Pull Requests.
 
-### How It Works
+### Two-Phase Workflow for Safety
 
-1. Create a Pull Request with changes to `transfer_repos.csv`
-2. GitHub Actions will automatically:
-   - Run unit tests and integration tests
-   - If tests pass, perform a dry-run using the repositories listed in `transfer_repos.csv`
-   - Upload the dry-run logs as an artifact for review
+The repository transfer process is split into two phases for safety:
 
-### Setting Up GitHub Actions
+#### 1. Validation Phase (`repo-transfer-pr.yml`)
+- **Trigger**: Automatically runs when a PR updates `transfer_repos.csv`
+- **Actions**:
+  - Validates CSV format and checks for substantial changes
+  - Validates repository existence in source organizations
+  - Runs automated tests to ensure tool functionality
+  - Performs a dry-run simulation of all transfers
+  - Generates detailed validation report
+- **Result**: Posts validation results as a PR comment with detailed status
 
-1. Configure the required secrets in your GitHub repository settings:
-   - `GITHUB_TOKEN_ADMIN`: GitHub token with admin access
-   - `GITHUB_TOKEN_MEMBER`: GitHub token with member access (for testing)
-   - `GITHUB_TOKEN_READONLY`: GitHub token with read-only access (for testing)
-   - `GITHUB_TOKEN_ORG1`: Token for source organization
-   - `GITHUB_TOKEN_ORG2`: Token for destination organization
+#### 2. Execution Phase (`repo-transfer-comment-execution.yml`)
+- **Trigger**: Manually initiated by commenting `apply transfer` on a PR
+- **Safety Checks**:
+  - Verifies the PR has at least one approval
+  - Confirms all required status checks have passed
+  - Only proceeds if all validation checks passed
+- **Actions**:
+  - Executes the actual repository transfers
+  - Monitors progress and logs transfer details
+  - Generates a comprehensive transfer report
+- **Result**: Posts transfer results as a PR comment with success/failure status
 
-2. Configure the repository variables in your GitHub repository settings:
-   - `TEST_ORG_1`: Name of the first test organization
-   - `TEST_ORG_2`: Name of the second test organization
-   - `TEST_USER`: GitHub username for testing
-   - `TEST_REPO_SUFFIX`: Suffix for test repositories (optional)
-   - `TEST_REPO`: Name of the test repository (optional)
+### Security and Permissions
 
-3. Create a Pull Request with changes to `transfer_repos.csv` to trigger the workflow
+The transfer tool requires GitHub tokens with:
+- Admin access to source organizations
+- Admin access to destination organizations
+- Permission to create repositories in destination organizations
 
-### Example CSV Format
+These permissions are stored as repository secrets and are only used by the GitHub Actions workflows.
+
+### CSV Format
+
+The `transfer_repos.csv` file should contain the following columns:
 
 ```csv
 source_org,repo_name,dest_org
@@ -152,7 +211,17 @@ nova-iris,test-repo-2,baohtruong
 baohtruong,test-repo-3,nova-iris
 ```
 
-## Testing
+## Usage (Command Line)
+
+If you prefer to use the tool directly from the command line instead of the PR workflow:
+
+### Environment Setup
+
+Before running the tool, you need to set up your GitHub API token as an environment variable:
+
+```bash
+export GITHUB_TOKEN=your_github_personal_access_token
+```
 
 ## Environment Configuration
 
