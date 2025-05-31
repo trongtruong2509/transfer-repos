@@ -252,7 +252,7 @@ def generate_markdown_report(merged_data: List[Dict], output_file: str) -> None:
     errors = [row for row in merged_data if row['error_message']]
     
     with open(output_file, 'w') as f:
-        f.write("## Repository Transfer Validation Results\n\n")
+        f.write("### Repository Transfer Validation Results\n\n")
         f.write("The following repositories were validated for transfer:\n\n")
         f.write("| Source Org | Repository | Destination Org | Status |\n")
         f.write("|------------|------------|-----------------|--------|\n")
@@ -279,18 +279,7 @@ def generate_markdown_report(merged_data: List[Dict], output_file: str) -> None:
             f.write(f"| {source_org} | {repo_name} | {destination_org} | {status} |\n")
         
         f.write("\n")
-        
-        # Add detailed error information only if there are errors
-        if errors:
-            f.write("### Error Details\n\n")
-            for row in errors:
-                source_parts = row['source'].split('/')
-                source_org = source_parts[0]
-                repo_name = source_parts[1] if len(source_parts) > 1 else ""
-                f.write(f"- {source_org}/{repo_name} → {row['destination']}: `**{row['error_message']}**`\n")
-        
-        f.write("\n")
-        
+
         # Add summary statistics
         passed = sum(1 for row in merged_data if 
                     row['source_org_status'] == 'passed' and 
@@ -354,7 +343,7 @@ def main():
     if not validation_results:
         print("No validation results found in log file")
         with open('validation_results.md', 'w') as f:
-            f.write("## Repository Transfer Validation Results\n\n")
+            f.write("### Repository Transfer Validation Results\n\n")
             f.write("⚠️ No validation data available. The dry run may have failed to generate logs.\n\n")
             f.write("Please check the workflow logs for more details.\n")
         return
