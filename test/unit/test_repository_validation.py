@@ -20,7 +20,7 @@ class TestRepositoryValidation:
 
     @patch('requests.Session.get')
     def test_valid_repo(self, mock_get, mock_repo_success_response):
-        """Test validation of existing repository."""
+        """Test validation of existing repository with correct owner."""
         mock_get.return_value = mock_repo_success_response
         
         transfer = GitHubRepoTransfer(token="admin-token", debug=False)
@@ -39,6 +39,17 @@ class TestRepositoryValidation:
         
         assert result is False
         mock_get.assert_called_once_with(f"https://api.github.com/repos/{TEST_ORG_1}/non-existent-repo")
+
+    @patch('requests.Session.get')
+    def test_repo_wrong_owner(self, mock_get, mock_repo_wrong_owner_response):
+        """Test validation of a repository owned by a different org than expected."""
+        mock_get.return_value = mock_repo_wrong_owner_response
+        
+        transfer = GitHubRepoTransfer(token="admin-token", debug=False)
+        result = transfer.validate_repo_access(TEST_ORG_1, TEST_REPO)
+        
+        assert result is False
+        mock_get.assert_called_once_with(f"https://api.github.com/repos/{TEST_ORG_1}/{TEST_REPO}")
 
     @patch('requests.Session.get')
     def test_network_error_during_repo_validation(self, mock_get):

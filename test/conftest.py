@@ -101,7 +101,14 @@ def mock_repo_success_response():
     """Mock a successful repository response."""
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {"name": TEST_REPO, "full_name": f"{TEST_ORG_1}/{TEST_REPO}"}
+    mock_response.json.return_value = {
+        "name": TEST_REPO, 
+        "full_name": f"{TEST_ORG_1}/{TEST_REPO}",
+        "owner": {
+            "login": TEST_ORG_1,
+            "type": "Organization"
+        }
+    }
     return mock_response
 
 @pytest.fixture
@@ -110,6 +117,21 @@ def mock_repo_not_found_response():
     mock_response = MagicMock()
     mock_response.status_code = 404
     mock_response.text = "Not Found"
+    return mock_response
+
+@pytest.fixture
+def mock_repo_wrong_owner_response():
+    """Mock a response for a repository owned by a different org than expected."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "name": TEST_REPO, 
+        "full_name": f"{TEST_ORG_2}/{TEST_REPO}",
+        "owner": {
+            "login": TEST_ORG_2,
+            "type": "Organization"
+        }
+    }
     return mock_response
 
 @pytest.fixture
