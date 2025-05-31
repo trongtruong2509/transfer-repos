@@ -604,8 +604,8 @@ class GitHubRepoTransfer:
                     
                     # Sleep for 30 seconds between transfer attempts to avoid "operation still in progress" errors
                     if i > 1 and not self.dry_run:  # Only sleep after the first repository and not in dry-run mode
-                        self.logger.info(f"Waiting 15 seconds before next transfer to avoid GitHub API rate limiting...")
-                        time.sleep(15)
+                        self.logger.info(f"Waiting 5 seconds before next transfer to avoid GitHub API rate limiting...")
+                        time.sleep(5)
                         
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1

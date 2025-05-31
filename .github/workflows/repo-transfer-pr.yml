@@ -37,35 +37,10 @@ jobs:
       - name: Configure environment variables
         env:
           GITHUB_TOKEN_ADMIN: ${{ secrets.ADMIN_TOKEN }}
-        #   GITHUB_TOKEN_MEMBER: ${{ secrets.GITHUB_TOKEN_MEMBER }}
-        #   GITHUB_TOKEN_READONLY: ${{ secrets.GITHUB_TOKEN_READONLY }}
-        #   GITHUB_TOKEN_ORG1: ${{ secrets.GITHUB_TOKEN_ORG1 }}
-        #   GITHUB_TOKEN_ORG2: ${{ secrets.GITHUB_TOKEN_ORG2 }}
-        #   TEST_ORG_1: ${{ vars.TEST_ORG_1 }}
-        #   TEST_ORG_2: ${{ vars.TEST_ORG_2 }}
-        #   TEST_USER: ${{ vars.TEST_USER }}
-        #   TEST_REPO_SUFFIX: ${{ vars.TEST_REPO_SUFFIX || format('{0}', github.run_id) }}
-        #   TEST_REPO: ${{ vars.TEST_REPO || format('test-public-org1-{0}', github.run_id) }}
         run: |
           # Export variables for tests
           echo "export GITHUB_TOKEN=${GITHUB_TOKEN_ADMIN}" > .env
-        #   echo "TEST_ORG_1=${TEST_ORG_1}" >> $GITHUB_ENV
-        #   echo "TEST_ORG_2=${TEST_ORG_2}" >> $GITHUB_ENV
-        #   echo "TEST_USER=${TEST_USER}" >> $GITHUB_ENV
-        #   echo "TEST_REPO_SUFFIX=${TEST_REPO_SUFFIX}" >> $GITHUB_ENV
-        #   echo "TEST_REPO=${TEST_REPO}" >> $GITHUB_ENV
-          
-          # Generate a temporary .env file for testing
-        #   echo "export GITHUB_TOKEN_ADMIN=${GITHUB_TOKEN_ADMIN}" >> .env
-        #   echo "export GITHUB_TOKEN_MEMBER=${GITHUB_TOKEN_MEMBER}" >> .env
-        #   echo "export GITHUB_TOKEN_READONLY=${GITHUB_TOKEN_READONLY}" >> .env
-        #   echo "export GITHUB_TOKEN_ORG1=${GITHUB_TOKEN_ORG1}" >> .env
-        #   echo "export GITHUB_TOKEN_ORG2=${GITHUB_TOKEN_ORG2}" >> .env
-        #   echo "TEST_ORG_1=${TEST_ORG_1}" >> .env
-        #   echo "TEST_ORG_2=${TEST_ORG_2}" >> .env
-        #   echo "TEST_USER=${TEST_USER}" >> .env
-        #   echo "TEST_REPO_SUFFIX=${TEST_REPO_SUFFIX}" >> .env
-        #   echo "TEST_REPO=${TEST_REPO}" >> .env
+
 
       - name: Check for changes in transfer_repos.csv
         id: csv-changes
@@ -110,6 +85,12 @@ jobs:
             else
               echo "test_failed=false" >> $GITHUB_OUTPUT
             fi
+            
+      - name: Fail job if tests failed
+        if: steps.unit-tests.outputs.test_failed == 'true'
+        run: |
+          echo "::error::Unit tests failed. Marking job as failed."
+          exit 1
 
     #   - name: Run integration tests
     #     run: |
@@ -172,6 +153,7 @@ jobs:
   dry-run:
     name: Dry Run Repository Transfer
     needs: test
+    if: always() && needs.test.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -181,13 +163,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-
-      - name: Download transfer summary
-        uses: actions/download-artifact@v4
-        with:
-          name: transfer-summary
-          path: .
-        continue-on-error: true
 
       - name: Download CSV validation
         uses: actions/download-artifact@v4
@@ -274,9 +249,39 @@ jobs:
           name: repo-transfer-logs
           path: logs/repo_transfer_*_dry_run.log
           retention-days: 7
+
+  comment:
+    name: Create PR Comment
+    # This job will run even if previous jobs fail
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
+    needs: [test, dry-run]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Download transfer summary
+        uses: actions/download-artifact@v4
+        with:
+          name: transfer-summary
+          path: .
+        continue-on-error: true
+
+      - name: Download validation results
+        uses: actions/download-artifact@v4
+        with:
+          name: validation-results
+          path: .
+        continue-on-error: true
+        
+      - name: Download CSV validation
+        uses: actions/download-artifact@v4
+        with:
+          name: csv-validation
+          path: .
+        continue-on-error: true
           
       - name: Create PR Comment with Results
-        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -324,10 +329,30 @@ jobs:
               ? '![Validation Status](https://img.shields.io/badge/Validation-Warning-yellow)'
               : '![Validation Status](https://img.shields.io/badge/Validation-Passed-brightgreen)';
             
+            // Check if previous jobs failed
+            const testJobStatus = '${{ needs.test.result }}';
+            const dryRunStatus = '${{ needs.dry-run.result }}';
+            
+            let jobsStatus = '';
+            if (testJobStatus !== 'success' || dryRunStatus !== 'success') {
+              jobsStatus = '\n\n⚠️ **Job Status**:\n';
+              
+              if (testJobStatus !== 'success') {
+                jobsStatus += `- Test job: ${testJobStatus === 'failure' ? '❌ Failed' : '⚠️ ' + testJobStatus}\n`;
+              }
+              
+              if (dryRunStatus !== 'success') {
+                jobsStatus += `- Dry run job: ${dryRunStatus === 'failure' ? '❌ Failed' : '⚠️ ' + dryRunStatus}\n`;
+              }
+              
+              jobsStatus += '\nSome validation steps may have been skipped. Review logs for more details.';
+            }
+            
             const commentBody = '# Repository Transfer Validation\n\n' +
               statusBadge + '\n\n' +
               '## Summary\n' +
-              'This PR includes repository transfers that have been validated with a dry-run.\n\n' +
+              'This PR includes repository transfers that have been validated with a dry-run.' + 
+              jobsStatus + '\n\n' +
               validationResults + '\n\n' +
               '## Next Steps\n' +
               '1. Review the validation results and dry-run logs\n' +
