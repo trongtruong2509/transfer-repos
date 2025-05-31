@@ -1,5 +1,5 @@
 source_org,repo_name,dest_org
-nova-iris,test-empty-org1-20250603,baohtruong
+nova-iris,test-empty-org1-20250603,baohtru
 nova-iris,test-public-org1-20250603,baohtruong
 nova-iris,test-private-org1-20250603,baohtruong
 nova-iris,test-with-branches-org1-20250603,baohtruong
