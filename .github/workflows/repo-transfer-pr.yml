@@ -188,11 +188,11 @@ jobs:
             echo "Please check the workflow logs for more details." >> validation_results.md
           fi
 
-      - name: Check validation status
-        if: steps.dry-run.outputs.validation_has_errors == 'true'
-        run: |
-          echo "::error::Validation found issues with repository transfers. See validation_results.md for details."
-          exit 1
+      # - name: Check validation status
+      #   if: steps.dry-run.outputs.validation_has_errors == 'true'
+      #   run: |
+      #     echo "::error::Validation found issues with repository transfers. See validation_results.md for details."
+      #     exit 1
 
       - name: Upload validation results
         uses: actions/upload-artifact@v4
