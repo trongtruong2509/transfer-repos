@@ -345,18 +345,6 @@ class GitHubRepoTransfer:
                 
         return False
             
-    def _log_step(self, step_number: int, total_steps: int, description: str, header: bool=False) -> None:
-        """Log a numbered step in a multi-step process."""
-        log_step(self.logger, step_number, total_steps, description, header)
-        
-    def _log_step_result(self, success: bool, message: str, details: str = None) -> None:
-        """Log the result of a step with visual indicator."""
-        log_step_result(self.logger, success, message, details)
-            
-    def _log_warning(self, message: str) -> None:
-        """Log a warning message with a warning symbol."""
-        log_warning(self.logger, message)
-    
     def _prompt_for_confirmation(self, source_org: str, repo_name: str, dest_org: str) -> bool:
         """
         Prompt the user for confirmation before proceeding with the transfer.
