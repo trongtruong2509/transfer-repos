@@ -362,7 +362,7 @@ jobs:
             });
 
       - name: Report failure
-        if: failure() || steps.report-results.outputs.isSuccess == 'false'
+        if: failure() || steps.check-approval.outputs.can_execute == 'false' || steps.report-results.outputs.isSuccess == 'false'
         uses: actions/github-script@v7
         with:
           script: |
