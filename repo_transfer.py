@@ -16,6 +16,7 @@ import datetime
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
+from helpers.logger import log_section_header, log_step, log_step_result, log_warning
 
 
 class GitHubRepoTransfer:
@@ -267,36 +268,36 @@ class GitHubRepoTransfer:
         # Skip organization and repository validation in this method if we're called from process_single_transfer
         # Otherwise, validate everything
         if not hasattr(self, '_validation_done') or not self._validation_done:
-            self._log_section_header("Validating Repository Transfer Prerequisites")
+            log_section_header(self.logger, "Validating Repository Transfer Prerequisites")
             
             # Validate organizations access
-            self._log_step(1, 3, f"Checking access to source organization '{source_org}'...")
+            log_step(self.logger, 1, 3, f"Checking access to source organization '{source_org}'...")
             if not self.validate_org_access(source_org):
-                self._log_step_result(False, f"Cannot access source organization: {source_org}")
+                log_step_result(self.logger, False, f"Cannot access source organization: {source_org}")
                 return False
-            self._log_step_result(True, f"Source organization access confirmed")
+            log_step_result(self.logger, True, f"Source organization access confirmed")
             
-            self._log_step(2, 3, f"Checking access to destination organization '{dest_org}'...")
+            log_step(self.logger, 2, 3, f"Checking access to destination organization '{dest_org}'...")
             if not self.validate_org_access(dest_org):
-                self._log_step_result(False, f"Cannot access destination organization: {dest_org}")
+                log_step_result(self.logger, False, f"Cannot access destination organization: {dest_org}")
                 return False
-            self._log_step_result(True, f"Destination organization access confirmed")
+            log_step_result(self.logger, True, f"Destination organization access confirmed")
             
             # Validate repository access
-            self._log_step(3, 3, f"Checking access to repository '{source_org}/{repo_name}'...")
+            log_step(self.logger, 3, 3, f"Checking access to repository '{source_org}/{repo_name}'...")
             if not self.validate_repo_access(source_org, repo_name):
-                self._log_step_result(False, f"Cannot access repository: {source_org}/{repo_name}")
+                log_step_result(self.logger, False, f"Cannot access repository: {source_org}/{repo_name}")
                 return False
-            self._log_step_result(True, f"Repository access confirmed")
+            log_step_result(self.logger, True, f"Repository access confirmed")
             
-            self._log_section_header("Validation Successful")
+            log_section_header(self.logger, "Validation Successful")
             
             # Removed confirmation prompt here since it's handled in calling methods
         
         # In dry-run mode, just log what would happen
         if self.dry_run:
-            self._log_section_header("DRY RUN TRANSFER SIMULATION")
-            self._log_step_result(True, f"Would transfer repository {source_org}/{repo_name} to {dest_org}")
+            log_section_header(self.logger, "DRY RUN TRANSFER SIMULATION")
+            log_step_result(self.logger, True, f"Would transfer repository {source_org}/{repo_name} to {dest_org}")
             return True
             
         # Perform the actual transfer with retries
@@ -308,7 +309,7 @@ class GitHubRepoTransfer:
                 url = f"https://api.github.com/repos/{source_org}/{repo_name}/transfer"
                 data = {"new_owner": dest_org}
                 
-                self._log_step(1, 1, f"Sending transfer request for {source_org}/{repo_name}...")
+                log_step(self.logger, 1, 1, f"Sending transfer request for {source_org}/{repo_name}...")
                 if attempt > 1:
                     self.logger.info(f"Retry attempt {attempt}/{max_retries}")
                     
@@ -316,18 +317,18 @@ class GitHubRepoTransfer:
                 self.logger.debug(f"Transfer API response: {response.status_code} {response.text}")
                 
                 if response.status_code == 202:
-                    self._log_step_result(True, f"Repository transfer initiated successfully")
+                    log_step_result(self.logger, True, f"Repository transfer initiated successfully")
                     return True
                     
                 # Check for "operation still in progress" error
                 if response.status_code == 422 and "previous repository operation is still in progress" in response.text:
                     if attempt < max_retries:
-                        self._log_warning(f"Previous repository operation still in progress. Waiting {retry_delay} seconds before retry...")
+                        log_warning(self.logger, f"Previous repository operation still in progress. Waiting {retry_delay} seconds before retry...")
                         time.sleep(retry_delay)
                         continue
                 
                 # Other errors
-                self._log_step_result(False, f"Repository transfer failed", f"GitHub API returned {response.status_code}: {response.text}")
+                log_step_result(self.logger, False, f"Repository transfer failed", f"GitHub API returned {response.status_code}: {response.text}")
                 self.logger.error(f"Transfer failed: {response.status_code} {response.text}")
                 
                 # Break if we get a definitive failure not related to "operation in progress"
@@ -337,67 +338,24 @@ class GitHubRepoTransfer:
             except Exception as e:
                 self.logger.error(f"Exception during transfer_repository API call: {e}", exc_info=True)
                 if attempt < max_retries:
-                    self._log_warning(f"Transfer attempt failed. Retrying in {retry_delay} seconds...")
+                    log_warning(self.logger, f"Transfer attempt failed. Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
                     continue
                 break
                 
         return False
             
-    def _log_section_header(self, title: str) -> None:
-        """Log a major section header with consistent formatting and green color."""
-        # Define green color code
-        GREEN = '\033[92m'  # Bright green
-        RESET = '\033[0m'   # Reset to default
-        
-        # Use error level for headers containing "FAILED" or "ERROR", warning for "WARNING", otherwise green
-        if "FAILED" in title or "ERROR" in title:
-            self.logger.error(f"{title}")
-        elif "WARNING" in title:
-            self.logger.warning(f"{title}")
-        else:
-            # For normal headers, use info level with green color
-            self.logger.info(f"{GREEN}{title}{RESET}")
-    
     def _log_step(self, step_number: int, total_steps: int, description: str, header: bool=False) -> None:
         """Log a numbered step in a multi-step process."""
-        # Define color codes
-        GREEN = '\033[92m'  # Bright green
-        RESET = '\033[0m'   # Reset to default
-
-        if header:
-            self.logger.info(f"{GREEN}Step {step_number}/{total_steps}: {description}{RESET}")
-        else:
-            self.logger.info(f"Step {step_number}/{total_steps}: {description}")
+        log_step(self.logger, step_number, total_steps, description, header)
         
     def _log_step_result(self, success: bool, message: str, details: str = None) -> None:
         """Log the result of a step with visual indicator."""
-        # Define color codes
-        GREEN = '\033[92m'  # Bright green
-        RED = '\033[91m'    # Red
-        RESET = '\033[0m'   # Reset to default
-        
-        # Apply appropriate color to the prefix symbol
-        if success:
-            prefix = f"{GREEN}✓{RESET}"
-            self.logger.info(f"{prefix} {message}")
-        else:
-            prefix = f"{RED}✗{RESET}"
-            # For failed steps, use error level to trigger red coloring
-            self.logger.error(f"{prefix} {message}")
-        
-        if details:
-            level = logging.INFO if success else logging.ERROR
-            self.logger.log(level, f"  - {details}")
+        log_step_result(self.logger, success, message, details)
             
     def _log_warning(self, message: str) -> None:
         """Log a warning message with a warning symbol."""
-        # Define yellow color for warning symbol
-        YELLOW = '\033[93m'  # Yellow
-        RESET = '\033[0m'    # Reset to default
-        
-        # Add yellow color to the warning symbol
-        self.logger.warning(f"{YELLOW}⚠{RESET} {message}")
+        log_warning(self.logger, message)
     
     def _prompt_for_confirmation(self, source_org: str, repo_name: str, dest_org: str) -> bool:
         """
@@ -488,56 +446,56 @@ class GitHubRepoTransfer:
     
     def process_single_transfer(self, source_org: str, repo_name: str, dest_org: str) -> bool:
         """Process a single repository transfer with full validation."""
-        self._log_section_header(f"Starting GitHub token and organization validation...")
+        log_section_header(self.logger, f"Starting GitHub token and organization validation...")
         self.logger.info(f"Processing transfer request: {source_org}/{repo_name} to {dest_org}")
         # Step 1: Validate token
-        self._log_step(1, 3, "Testing GitHub API connection...")
+        log_step(self.logger, 1, 3, "Testing GitHub API connection...")
         if not self.validate_token():
             self.logger.error("GitHub token validation failed, aborting transfer")
-            self._log_step_result(False, "GitHub API connection failed", "Invalid token or API error")
-            self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
+            log_step_result(self.logger, False, "GitHub API connection failed", "Invalid token or API error")
+            log_section_header(self.logger, "VALIDATION FAILED - TRANSFER ABORTED")
             return False
         else:
-            self._log_step_result(True, f"GitHub API connection successful (authenticated as: {self.user_login})")
+            log_step_result(self.logger, True, f"GitHub API connection successful (authenticated as: {self.user_login})")
         # Step 2: Validate source organization
-        self._log_step(2, 3, f"Validating access to source organization '{source_org}'...")
+        log_step(self.logger, 2, 3, f"Validating access to source organization '{source_org}'...")
         source_org_valid = self.validate_org_access(source_org)
         if not source_org_valid:
-            self._log_step_result(False, f"Failed to access source organization '{source_org}'", 
+            log_step_result(self.logger, False, f"Failed to access source organization '{source_org}'", 
                                 "Organization not found, user not a member, or insufficient permissions")
             self.logger.error(f"Source org validation failed for {source_org}")
             if not self.dry_run:
-                self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
+                log_section_header(self.logger, "VALIDATION FAILED - TRANSFER ABORTED")
                 return False
             else:
-                self._log_warning(f"Continuing in DRY RUN mode despite source org validation failure")
+                log_warning(self.logger, f"Continuing in DRY RUN mode despite source org validation failure")
         else:
-            self._log_step_result(True, f"Access to source organization '{source_org}' confirmed")
+            log_step_result(self.logger, True, f"Access to source organization '{source_org}' confirmed")
         # Step 3: Validate destination organization
-        self._log_step(3, 3, f"Validating access to destination organization '{dest_org}'...")
+        log_step(self.logger, 3, 3, f"Validating access to destination organization '{dest_org}'...")
         dest_org_valid = self.validate_org_access(dest_org)
         if not dest_org_valid:
-            self._log_step_result(False, f"Failed to access destination organization '{dest_org}'", 
+            log_step_result(self.logger, False, f"Failed to access destination organization '{dest_org}'", 
                                 "Organization not found, user not a member, or insufficient permissions")
             self.logger.error(f"Destination org validation failed for {dest_org}")
             if not self.dry_run:
-                self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
+                log_section_header(self.logger, "VALIDATION FAILED - TRANSFER ABORTED")
                 return False
             else:
-                self._log_warning(f"Continuing in DRY RUN mode despite destination org validation failure")
+                log_warning(self.logger, f"Continuing in DRY RUN mode despite destination org validation failure")
         else:
-            self._log_step_result(True, f"Access to destination organization '{dest_org}' confirmed")
+            log_step_result(self.logger, True, f"Access to destination organization '{dest_org}' confirmed")
         
         # Determine overall validation status
         all_valid = self.user_login and source_org_valid and dest_org_valid
         
         if all_valid:
-            self._log_section_header("VALIDATION COMPLETED SUCCESSFULLY")
+            log_section_header(self.logger, "VALIDATION COMPLETED SUCCESSFULLY")
         elif self.dry_run:
-            self._log_section_header("VALIDATION PARTIALLY COMPLETED - CONTINUING IN DRY RUN MODE")
-            self._log_warning(f"Simulating transfer: {source_org}/{repo_name} → {dest_org}")
+            log_section_header(self.logger, "VALIDATION PARTIALLY COMPLETED - CONTINUING IN DRY RUN MODE")
+            log_warning(self.logger, f"Simulating transfer: {source_org}/{repo_name} → {dest_org}")
         else:
-            self._log_section_header("VALIDATION FAILED - TRANSFER ABORTED")
+            log_section_header(self.logger, "VALIDATION FAILED - TRANSFER ABORTED")
             return False
         
         # Set a flag to indicate validation is already done
@@ -545,12 +503,12 @@ class GitHubRepoTransfer:
         
         # Ask for confirmation before proceeding with transfer
         if not self._prompt_for_confirmation(source_org, repo_name, dest_org):
-            self._log_section_header("TRANSFER ABORTED BY USER")
+            log_section_header(self.logger, "TRANSFER ABORTED BY USER")
             self._validation_done = False  # Reset flag
             return False
             
         # Process the transfer
-        self._log_section_header(f"STARTING REPOSITORY TRANSFER")
+        log_section_header(self.logger, f"STARTING REPOSITORY TRANSFER")
         try:
             result = self.transfer_repository(source_org, repo_name, dest_org)
         except Exception as e:
@@ -559,9 +517,9 @@ class GitHubRepoTransfer:
         self._validation_done = False  # Reset flag
         
         if result:
-            self._log_section_header("REPOSITORY TRANSFER COMPLETED SUCCESSFULLY")
+            log_section_header(self.logger, "REPOSITORY TRANSFER COMPLETED SUCCESSFULLY")
         else:
-            self._log_section_header("REPOSITORY TRANSFER FAILED")
+            log_section_header(self.logger, "REPOSITORY TRANSFER FAILED")
             
         return result
         
@@ -577,20 +535,20 @@ class GitHubRepoTransfer:
         Returns:
             Tuple[int, int]: (successful transfers, total transfers)
         """
-        self._log_section_header(f"PROCESSING BATCH TRANSFERS FROM CSV")
+        log_section_header(self.logger, f"PROCESSING BATCH TRANSFERS FROM CSV")
         self.logger.info(f"CSV file: {csv_path}")
         
         # Step 1: Validate token
-        self._log_step(1, 3, "Testing GitHub API connection...")
+        log_step(self.logger, 1, 3, "Testing GitHub API connection...")
         if not self.validate_token():
-            self._log_step_result(False, "GitHub API connection failed", "Invalid token or API error")
-            self._log_section_header("VALIDATION FAILED - TRANSFERS ABORTED")
+            log_step_result(self.logger, False, "GitHub API connection failed", "Invalid token or API error")
+            log_section_header(self.logger, "VALIDATION FAILED - TRANSFERS ABORTED")
             return 0, 0
         else:
-            self._log_step_result(True, f"GitHub API connection successful (authenticated as: {self.user_login})")
+            log_step_result(self.logger, True, f"GitHub API connection successful (authenticated as: {self.user_login})")
             
         # Step 2: Check file existence and format
-        self._log_step(2, 3, f"Validating CSV file format...")
+        log_step(self.logger, 2, 3, f"Validating CSV file format...")
         
         successful = 0
         total = 0
@@ -603,28 +561,28 @@ class GitHubRepoTransfer:
                 required_columns = ['source_org', 'repo_name', 'dest_org']
                 if not all(col in reader.fieldnames for col in required_columns):
                     missing = [col for col in required_columns if col not in reader.fieldnames]
-                    self._log_step_result(False, f"CSV file has invalid format", 
+                    log_step_result(self.logger, False, f"CSV file has invalid format", 
                                         f"Missing required columns: {', '.join(missing)}")
-                    self._log_section_header("VALIDATION FAILED - TRANSFERS ABORTED")
+                    log_section_header(self.logger, "VALIDATION FAILED - TRANSFERS ABORTED")
                     return 0, 0
                 else:
-                    self._log_step_result(True, f"CSV file format validated successfully")
+                    log_step_result(self.logger, True, f"CSV file format validated successfully")
                 
                 # Step 3: Process the repositories
-                self._log_step(3, 3, "Processing repository transfers...")
+                log_step(self.logger, 3, 3, "Processing repository transfers...")
                 
                 repos = list(reader)
                 if not repos:
-                    self._log_step_result(False, "No repositories found in CSV file", "File may be empty or malformed")
-                    self._log_section_header("BATCH TRANSFER COMPLETED - NO REPOSITORIES PROCESSED")
+                    log_step_result(self.logger, False, "No repositories found in CSV file", "File may be empty or malformed")
+                    log_section_header(self.logger, "BATCH TRANSFER COMPLETED - NO REPOSITORIES PROCESSED")
                     return 0, 0
                 
-                self._log_section_header(f"TRANSFERRING {len(repos)} REPOSITORIES")
+                log_section_header(self.logger, f"TRANSFERRING {len(repos)} REPOSITORIES")
                 
                 # Get batch confirmation for all transfers if not in confirm_each mode
                 if not self.confirm_each and not self.auto_approve:
                     if not self._prompt_for_batch_confirmation(repos):
-                        self._log_section_header("BATCH TRANSFER ABORTED BY USER")
+                        log_section_header(self.logger, "BATCH TRANSFER ABORTED BY USER")
                         return 0, 0
                 
                 for i, row in enumerate(repos, 1):
@@ -633,12 +591,12 @@ class GitHubRepoTransfer:
                     repo_name = row['repo_name'].strip()
                     dest_org = row['dest_org'].strip()
                     
-                    self._log_step(i, len(repos), f"Processing {source_org}/{repo_name} → {dest_org}", header=True)
+                    log_step(self.logger, i, len(repos), f"Processing {source_org}/{repo_name} → {dest_org}", header=True)
                     
                     # Prompt for confirmation before each transfer if in confirm_each mode
                     if self.confirm_each and not self.auto_approve:
                         if not self._prompt_for_confirmation(source_org, repo_name, dest_org):
-                            self._log_step_result(False, f"Transfer skipped (user declined)", f"{source_org}/{repo_name} → {dest_org}")
+                            log_step_result(self.logger, False, f"Transfer skipped (user declined)", f"{source_org}/{repo_name} → {dest_org}")
                             continue
                     
                     # Sleep for 30 seconds between transfer attempts to avoid "operation still in progress" errors
@@ -648,32 +606,32 @@ class GitHubRepoTransfer:
                         
                     if self.transfer_repository(source_org, repo_name, dest_org):
                         successful += 1
-                        self._log_step_result(True, f"Transfer completed", f"{source_org}/{repo_name} → {dest_org}")
+                        log_step_result(self.logger, True, f"Transfer completed", f"{source_org}/{repo_name} → {dest_org}")
                     else:
-                        self._log_step_result(False, f"Transfer failed", f"{source_org}/{repo_name} → {dest_org}")
+                        log_step_result(self.logger, False, f"Transfer failed", f"{source_org}/{repo_name} → {dest_org}")
                 
                 # Summary section
                 if successful == total:
-                    self._log_section_header(f"BATCH TRANSFER COMPLETED SUCCESSFULLY")
-                    self._log_step_result(True, f"Transferred {successful} out of {total} repositories")
+                    log_section_header(self.logger, f"BATCH TRANSFER COMPLETED SUCCESSFULLY")
+                    log_step_result(self.logger, True, f"Transferred {successful} out of {total} repositories")
                 elif successful > 0:
-                    self._log_section_header(f"BATCH TRANSFER COMPLETED WITH PARTIAL SUCCESS")
-                    self._log_warning(f"Only {successful} out of {total} repositories were transferred successfully")
+                    log_section_header(self.logger, f"BATCH TRANSFER COMPLETED WITH PARTIAL SUCCESS")
+                    log_warning(self.logger, f"Only {successful} out of {total} repositories were transferred successfully")
                 else:
-                    self._log_section_header(f"BATCH TRANSFER FAILED")
-                    self._log_step_result(False, f"Failed to transfer any repositories", f"0 of {total} succeeded")
+                    log_section_header(self.logger, f"BATCH TRANSFER FAILED")
+                    log_step_result(self.logger, False, f"Failed to transfer any repositories", f"0 of {total} succeeded")
         
         except FileNotFoundError:
-            self._log_step_result(False, f"CSV file not found", csv_path)
-            self._log_section_header("VALIDATION FAILED - TRANSFERS ABORTED")
+            log_step_result(self.logger, False, f"CSV file not found", csv_path)
+            log_section_header(self.logger, "VALIDATION FAILED - TRANSFERS ABORTED")
             return 0, 0
         except Exception as e:
-            self._log_step_result(False, f"Error processing CSV file", str(e))
+            log_step_result(self.logger, False, f"Error processing CSV file", str(e))
             if successful > 0:
-                self._log_section_header(f"BATCH TRANSFER INTERRUPTED - PARTIAL SUCCESS")
-                self._log_warning(f"Only {successful} out of {total} repositories were processed before error")
+                log_section_header(self.logger, f"BATCH TRANSFER INTERRUPTED - PARTIAL SUCCESS")
+                log_warning(self.logger, f"Only {successful} out of {total} repositories were processed before error")
             else:
-                self._log_section_header(f"BATCH TRANSFER FAILED")
+                log_section_header(self.logger, f"BATCH TRANSFER FAILED")
             
             return successful, total
             
