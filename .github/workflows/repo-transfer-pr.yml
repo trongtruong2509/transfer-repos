@@ -217,22 +217,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
-      - name: Get PR details
-        id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number
-            });
-            return {
-              sha: pr.data.head.sha,
-              ref: pr.data.head.ref
-            };
-      
+     
       - name: Download transfer summary
         uses: actions/download-artifact@v4
         with:
@@ -349,32 +334,4 @@ jobs:
               // Don't fail the workflow, but log the error
               core.warning(`Failed to create PR comment: ${error.message}`);
             }
-            
-      - name: Set PR status
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const testJobStatus = '${{ needs.test.result }}';
-            const dryRunStatus = '${{ needs.dry-run.result }}';
-            let state = 'success';
-            let description = 'Validation passed';
-            
-            if (testJobStatus !== 'success') {
-              state = 'failure';
-              description = 'Tests failed';
-            } else if (dryRunStatus !== 'success' && dryRunStatus !== 'skipped') {
-              state = 'failure';
-              description = 'Validation failed';
-            }
-            
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: '${{ fromJson(steps.pr.outputs.result).sha }}',
-              state: state,
-              context: 'Repository Transfer PR Validation',
-              description: description,
-              target_url: runUrl
-            });
+           
