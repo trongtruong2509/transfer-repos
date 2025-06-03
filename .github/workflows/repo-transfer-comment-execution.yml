@@ -268,11 +268,11 @@ jobs:
             python helpers/parse_transfer_logs.py --mode real_run --log-file "$LATEST_LOG" --output-file transfer_results.md
             
             # Check if parser results were generated
-            if [ -f "validation_results.md" ]; then
-                echo "Validation results generated successfully."
-                cat validation_results.md
+            if [ -f "transfer_results.md" ]; then
+                echo "Transfer results generated successfully."
+                cat transfer_results.md
             else
-                echo "::warning::Failed to generate validation results. Creating empty validation results."
+                echo "::warning::Failed to generate transfer results. Creating empty transfer results."
                 echo "::warning::Generated transfer results file is empty. Creating a basic report."
                 echo "## Repository Transfer Results" > transfer_results.md
                 echo "" >> transfer_results.md
